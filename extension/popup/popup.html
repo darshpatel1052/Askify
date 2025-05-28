@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperwise</title>
+    <link rel="stylesheet" href="../styles/popup.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Paperwise</h1>
+            <p>Get smart answers for any webpage</p>
+        </div>
+
+        <div id="auth-section" class="section">
+            <div id="login-form">
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="password" placeholder="Password">
+                <button id="login-btn">Login</button>
+                <button id="signup-btn">Sign Up</button>
+            </div>
+            <div id="user-info" style="display: none;">
+                <p>Logged in as: <span id="user-email"></span></p>
+                <button id="logout-btn">Logout</button>
+            </div>
+        </div>
+
+        <div id="query-section" class="section" style="display: none;">
+            <textarea id="query-input" placeholder="Ask a question about this webpage..."></textarea>
+            <button id="query-btn">Get Answer</button>
+            <div id="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Processing your query...</p>
+            </div>
+            <div id="result-container">
+                <div id="answer-box"></div>
+            </div>
+        </div>
+
+        <div id="history-section" class="section" style="display: none;">
+            <h3>Recent Queries</h3>
+            <ul id="history-list"></ul>
+        </div>
+    </div>
+
+    <script src="../popup/popup.js"></script>
+</body>
+
+</html>
