@@ -1,5 +1,5 @@
 # History Endpoints
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from typing import Dict, List, Optional
 from datetime import datetime
@@ -36,11 +36,23 @@ class HistoryResponse(BaseModel):
 
 @router.post("/record", status_code=status.HTTP_201_CREATED)
 async def record_history(
-    request: HistoryRequest,
+    request_body: HistoryRequest,
+    request: Request,
     current_user: User = Depends(get_current_user)
 ):
+    print(f"--- /history/record endpoint was called ---")
+    print(f"Request received: url='{request_body.url}', title='{request_body.title}', timestamp='{request_body.timestamp}'")
+    print(f"Request headers: {dict(request.headers)}")
+    print(f"Client host: {request.client.host if request.client else 'No client info available'}")
+    
+    if current_user:
+        print(f"Authenticated user ID: {current_user.id}")
+    else:
+        print(f"User not authenticated or current_user is None.")
+    
     # We're not automatically recording browsing history anymore
     # History is only recorded when a query is made
+    print(f"--- /history/record is disabled, returning success without recording ---")
     return {"success": True, "message": "Automatic history recording is disabled"}
 
 @router.get("", response_model=HistoryResponse)

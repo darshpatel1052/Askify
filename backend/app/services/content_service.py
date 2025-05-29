@@ -1,21 +1,17 @@
 # Content processing service using LangChain
 from langchain_openai import ChatOpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
-from langchain.chains.summarize import load_summarize_chain
-from langchain.chains import create_extraction_chain
-from langchain.prompts import PromptTemplate
-from typing import Dict, List
 import requests
 from bs4 import BeautifulSoup
 import re
+from datetime import datetime
 
 from app.core.config import OPENAI_API_KEY
+from app.db.vector_store import add_to_vector_store, url_exists_in_vector_store
 
 # Initialize LLM
 llm = ChatOpenAI(
     openai_api_key=OPENAI_API_KEY,
-    model_name="gpt-40-mini",
+    model_name="gpt-4o-mini",
     temperature=0.2
 )
 
@@ -30,9 +26,10 @@ def extract_webpage_content(url: str) -> str:
         Extracted text content from the webpage
     """
     try:
-        # Send GET request to the URL
-        response = requests.get(url, headers={"User-Agent": "Paperwise/1.0"})
-        response.raise_for_status()
+        # Send GET request to the URL with a standard browser user agent
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()  # This will raise an exception for HTTP errors
         
         # Parse HTML with BeautifulSoup
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -64,80 +61,44 @@ def extract_webpage_content(url: str) -> str:
         return text
     except Exception as e:
         print(f"Error extracting content from {url}: {str(e)}")
-        return f"Failed to extract content from {url}. Error: {str(e)}"
+        # Return a special error message that can be recognized by the frontend
+        return f"SITE_BLOCKED: Could not access content from {url}. The site may be blocking automated access."
 
-def process_webpage_content(url: str) -> Dict:
+def process_and_store_content(user_id: str, url: str, embeddings) -> bool:
     """
-    Process the content of a webpage using LangChain.
-    
+    Process and store content from a URL only if it doesn't already exist in the vector store.
+    No summarization is performed - just extract and store the raw content.
+
     Args:
-        url: The URL of the webpage
-    
+        user_id: The ID of the user.
+        url: The URL of the webpage to process.
+        embeddings: The embeddings model to use for the vector store.
+
     Returns:
-        Dict with processed data including summary, key topics, and metadata
+        True if new content was processed and stored, False if it already existed.
     """
-    # Extract content from URL
+    # Check if content for this URL already exists in the vector store
+    if url_exists_in_vector_store(user_id=user_id, url=url, embeddings=embeddings):
+        return False
+
+    # Extract content from the URL
     content = extract_webpage_content(url)
     
-    # Split the content into chunks for processing
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=4000,
-        chunk_overlap=200,
-        separators=["\n\n", "\n", " ", ""]
-    )
+    # Check if the site is blocked
+    if content.startswith("SITE_BLOCKED:"):
+        return False
     
-    # Create documents from content
-    docs = [Document(page_content=content, metadata={"source": url})]
-    split_docs = text_splitter.split_documents(docs)
-    
-    # Generate a summary
-    summary_template = """
-    Please summarize the following text from the webpage:
-    
-    {text}
-    
-    CONCISE SUMMARY:
-    """
-    SUMMARY_PROMPT = PromptTemplate.from_template(summary_template)
-    summary_chain = load_summarize_chain(
-        llm=llm,
-        chain_type="stuff",
-        prompt=SUMMARY_PROMPT,
-        verbose=False
-    )
-    
-    summary = summary_chain.run(split_docs[:5])  # Use first 5 chunks for summary
-    
-    # Extract key topics
-    schema = {
-        "properties": {
-            "topics": {
-                "type": "array",
-                "items": {
-                    "type": "string",
-                    "description": "A key topic or concept from the text"
-                },
-                "description": "The main topics or key concepts discussed in the text"
-            }
-        },
-        "required": ["topics"]
-    }
-    
-    # Extract topics from first 3 chunks only to keep it focused
-    topic_extraction_chain = create_extraction_chain(schema=schema, llm=llm)
-    topics_result = topic_extraction_chain.run(split_docs[0].page_content)
-    
-    # Build metadata
-    metadata = {
-        "url": url,
-        "content_length": len(content),
-        "chunk_count": len(split_docs),
-        "extracted_content": content  # Include the extracted content
-    }
-    
-    return {
-        "summary": summary,
-        "key_topics": topics_result.get("topics", []),
-        "metadata": metadata,
-        "embeddings": None  # This would be handled by the vector store
-    }
+    if content and not content.startswith("Failed to extract content"):
+        # Store content in vector store
+        add_to_vector_store(
+            user_id=user_id,
+            content=content,
+            url=url,
+            summary=None,
+            embeddings=embeddings,
+            timestamp=datetime.utcnow()
+        )
+        return True
+    else:
+        return False
+

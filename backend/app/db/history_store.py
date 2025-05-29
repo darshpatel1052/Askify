@@ -29,6 +29,12 @@ def save_browsing_history(
     Returns:
         The ID of the history entry
     """
+    print(f"[{user_id}] save_browsing_history called for URL: {url}")
+    print(f"[{user_id}] This function should NOT be called in the current version")
+    print(f"[{user_id}] Stack trace:")
+    import traceback
+    traceback.print_stack()
+    
     history_id = str(uuid.uuid4())
     
     history_data = {
@@ -40,7 +46,10 @@ def save_browsing_history(
         "metadata": metadata or {}
     }
     
+    # Insert into Supabase
+    print(f"[{user_id}] Inserting browsing history record in Supabase")
     supabase.table("browsing_history").insert(history_data).execute()
+    print(f"[{user_id}] Browsing history record inserted: {history_id}")
     
     return history_id
 

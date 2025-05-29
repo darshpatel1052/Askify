@@ -1,5 +1,5 @@
 # Query Endpoints
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from typing import Dict, Optional
 from datetime import datetime
@@ -27,11 +27,15 @@ class QueryHistoryResponse(BaseModel):
 
 @router.post("/ask", response_model=QueryResponse)
 async def ask_query(
-    request: QueryRequest,
+    request_body: QueryRequest,
+    request: Request,
     current_user: User = Depends(get_current_user)
 ):
     print(f"--- Entering /ask endpoint ---")
-    print(f"Request received: query='{request.query}', url='{request.url}', timestamp='{request.timestamp}'")
+    print(f"Request received: query='{request_body.query}', url='{request_body.url}', timestamp='{request_body.timestamp}'")
+    print(f"Request headers: {dict(request.headers)}")
+    print(f"Client host: {request.client.host if request.client else 'No client info available'}")
+    
     if current_user:
         print(f"Authenticated user ID: {current_user.id}")
     else:
@@ -43,11 +47,11 @@ async def ask_query(
         )
 
     try:
-        print(f"[{current_user.id}] Calling answer_query with query='{request.query}', url='{request.url}'")
+        print(f"[{current_user.id}] Calling answer_query with query='{request_body.query}', url='{request_body.url}'")
         result = answer_query(
             user_id=current_user.id,
-            query=request.query,
-            url=request.url
+            query=request_body.query,
+            url=request_body.url
         )
         print(f"[{current_user.id}] answer_query result: {result}")
         
@@ -56,13 +60,13 @@ async def ask_query(
             # Optionally, raise an HTTPException or return a specific error response
             # For now, we'll proceed but this might be a point of failure to investigate
         
-        print(f"[{current_user.id}] Calling save_query_history with query='{request.query}', answer='{result.get('answer')}', url='{request.url}'")
+        print(f"[{current_user.id}] Calling save_query_history with query='{request_body.query}', answer='{result.get('answer')}', url='{request_body.url}'")
         save_query_history(
             user_id=current_user.id,
-            query=request.query,
+            query=request_body.query,
             answer=result.get("answer"), # Ensure this is correctly passed
-            url=request.url,
-            timestamp=request.timestamp
+            url=request_body.url,
+            timestamp=request_body.timestamp
         )
         print(f"[{current_user.id}] Query history saved successfully.")
         
