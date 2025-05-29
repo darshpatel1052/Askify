@@ -15,10 +15,13 @@
         "activeTab",
         "storage",
         "scripting",
-        "identity"
+        "identity",
+        "clipboardWrite",
+        "tabs"
     ],
     "host_permissions": [
-        "https://*/*"
+        "https://*/*",
+        "http://*/*"
     ],
     "background": {
         "service_worker": "background/background.js"
@@ -37,5 +40,6 @@
         "16": "images/icon16.png",
         "48": "images/icon48.png",
         "128": "images/icon128.png"
-    }
+    },
+    "offline_enabled": true
 }

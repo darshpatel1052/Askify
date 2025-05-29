@@ -13,12 +13,17 @@
         <div class="header">
             <h1>Paperwise</h1>
             <p>Get smart answers for any webpage</p>
+            <div class="settings-bar">
+                <button id="theme-toggle" class="icon-btn" title="Toggle dark mode">🌓</button>
+                <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
+            </div>
         </div>
 
         <div id="auth-section" class="section">
             <div id="login-form">
                 <input type="email" id="email" placeholder="Email">
                 <input type="password" id="password" placeholder="Password">
+                <div id="auth-status" class="status-message"></div>
                 <button id="login-btn">Login</button>
                 <button id="signup-btn">Sign Up</button>
             </div>
@@ -29,14 +34,24 @@
         </div>
 
         <div id="query-section" class="section" style="display: none;">
-            <textarea id="query-input" placeholder="Ask a question about this webpage..."></textarea>
-            <button id="query-btn">Get Answer</button>
+            <div class="input-container">
+                <textarea id="query-input" placeholder="Ask a question about this webpage..."></textarea>
+                <div class="char-counter"><span id="char-count">0</span>/280</div>
+            </div>
+            <div class="query-controls">
+                <button id="query-btn">Get Answer</button>
+                <button id="clear-btn">Clear</button>
+            </div>
             <div id="loading" style="display: none;">
                 <div class="spinner"></div>
                 <p>Processing your query...</p>
             </div>
+            <div id="query-status" class="status-message"></div>
             <div id="result-container">
                 <div id="answer-box"></div>
+                <div class="answer-controls">
+                    <button id="copy-btn" class="icon-btn" title="Copy to clipboard">📋</button>
+                </div>
             </div>
         </div>
 

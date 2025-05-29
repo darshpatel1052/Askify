@@ -23,12 +23,17 @@ Paperwise follows a client-server architecture:
 
 ## Features
 
+- **Smart Query Answering**: Ask questions about any webpage and get accurate answers based on the content
 - **Server-Side Content Extraction**: Uses BeautifulSoup on the backend to extract webpage content
-- **Query Answering**: Answer questions about the current webpage using RAG
 - **User Authentication**: Secure login/signup system using Supabase
 - **History Tracking**: Saves user browsing and query history for future reference
 - **Cross-Page Context**: Leverages previously visited pages to enhance answers
 - **Minimal Extension Permissions**: Extension only needs to send URLs, not extract content
+- **Dark Mode Support**: Toggle between light and dark themes
+- **Offline Access**: Save answers for offline access
+- **Character Counter**: Visual feedback for query length
+- **Copy to Clipboard**: Easily copy answers to clipboard
+- **Customizable Settings**: Adjust theme, font size, and history display
 
 ## Setup and Installation
 
