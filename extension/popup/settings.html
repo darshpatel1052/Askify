@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperwise Settings</title>
+    <link rel="stylesheet" href="../styles/popup.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Paperwise Settings</h1>
+            <button id="back-btn" class="icon-btn">⬅️</button>
+        </div>
+
+        <div class="section">
+            <h3>Appearance</h3>
+            <div class="setting-item">
+                <label for="theme-select">Theme</label>
+                <select id="theme-select">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                    <option value="system">System default</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label for="font-size">Font Size</label>
+                <select id="font-size">
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Query Settings</h3>
+            <div class="setting-item">
+                <label for="max-history">Max History Items</label>
+                <select id="max-history">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="15">15</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <input type="checkbox" id="save-offline" checked>
+                <label for="save-offline">Save answers for offline access</label>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>About</h3>
+            <p>Paperwise v1.0.0</p>
+            <p><a href="https://paperwise.com" target="_blank">Visit website</a></p>
+        </div>
+    </div>
+
+    <script src="settings.js"></script>
+</body>
+
+</html>
