@@ -60,7 +60,7 @@ def extract_webpage_content(url: str) -> str:
         
         return text
     except Exception as e:
-        print(f"Error extracting content from {url}: {str(e)}")
+
         # Return a special error message that can be recognized by the frontend
         return f"SITE_BLOCKED: Could not access content from {url}. The site may be blocking automated access."
 

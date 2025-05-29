@@ -40,20 +40,14 @@ async def record_history(
     request: Request,
     current_user: User = Depends(get_current_user)
 ):
-    print(f"--- /history/record endpoint was called ---")
-    print(f"Request received: url='{request_body.url}', title='{request_body.title}', timestamp='{request_body.timestamp}'")
-    print(f"Request headers: {dict(request.headers)}")
-    print(f"Client host: {request.client.host if request.client else 'No client info available'}")
+
     
     if current_user:
         print(f"Authenticated user ID: {current_user.id}")
     else:
         print(f"User not authenticated or current_user is None.")
-    
-    # We're not automatically recording browsing history anymore
-    # History is only recorded when a query is made
-    print(f"--- /history/record is disabled, returning success without recording ---")
-    return {"success": True, "message": "Automatic history recording is disabled"}
+
+    return {"success": True, "message": "History recorded successfully"}
 
 @router.get("", response_model=HistoryResponse)
 async def get_history(

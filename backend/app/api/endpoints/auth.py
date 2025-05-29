@@ -9,7 +9,7 @@ from typing import Optional
 from app.core.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.models.user import User
 from app.services.user_service import authenticate_user, create_user, get_user_by_email
-from app.auth.password import verify_password, get_password_hash
+from app.auth.password import get_password_hash
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")

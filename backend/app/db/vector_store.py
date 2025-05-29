@@ -31,13 +31,12 @@ def get_vector_store_for_user(user_id: str, embeddings):
     # Create a unique collection name for this user
     collection_name = f"user_{user_id}"
     
-    print(f"Attempting to get or create collection: {collection_name}")
+
     # Use get_or_create_collection for robustness
     try:
         collection = chroma_client.get_or_create_collection(
             name=collection_name,
         )
-        print(f"Successfully got or created collection: {collection_name}, ID: {collection.id}")
     except Exception as e:
         print(f"Error in get_or_create_collection for {collection_name}: {e}")
         # Re-raise the exception if you want to handle it further up
@@ -87,7 +86,7 @@ def url_exists_in_vector_store(user_id: str, url: str, embeddings) -> bool:
     Returns:
         True if the URL exists, False otherwise.
     """
-    print(f"[{user_id}] Checking if URL '{url}' exists in vector store")
+
     try:
         vector_store = get_vector_store_for_user(user_id, embeddings)
         # Perform a search with a filter for the exact source URL
@@ -97,10 +96,9 @@ def url_exists_in_vector_store(user_id: str, url: str, embeddings) -> bool:
             filter={"source": url} 
         )
         exists = len(results) > 0
-        print(f"[{user_id}] URL '{url}' exists in vector store: {exists}")
+
         return exists
     except Exception as e:
-        print(f"[{user_id}] Error checking if URL '{url}' exists: {e}. Assuming it does not exist.")
         return False
 
 def add_to_vector_store(
@@ -159,12 +157,11 @@ def add_to_vector_store(
         metadata["summary"] = summary
     
     # Create a document with the content and metadata
-    print(f"[{user_id}] Creating semantic chunks for URL '{url}'")
+
     # SemanticChunker expects a list of texts, not Documents
     # So we'll create chunks first, then convert to Documents with metadata
     chunks = text_splitter.create_documents([content])
     
-    print(f"[{user_id}] Created {len(chunks)} semantic chunks for URL '{url}'")
     
     # Generate a unique content ID
     content_id = str(uuid.uuid4())
@@ -180,9 +177,9 @@ def add_to_vector_store(
             chunk.metadata[key] = value
     
     # Add chunks to vector store
-    print(f"[{user_id}] Generating embeddings and storing {len(chunks)} chunks for URL '{url}'")
+
     vector_store.add_documents(chunks)
-    print(f"[{user_id}] Successfully added {len(chunks)} chunks with embeddings for URL '{url}' to vector store")
+
     
     return content_id
 
