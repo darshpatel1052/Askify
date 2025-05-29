@@ -2,7 +2,9 @@
 // Handles communication between the extension popup and content scripts
 // Also manages communication with the backend API
 
-const API_BASE_URL = 'http://localhost:8000/api/v1'; // Change this in production
+// Include the config.js script in manifest.json
+// The CONFIG object will be available globally
+const API_BASE_URL = typeof CONFIG !== 'undefined' ? CONFIG.API_BASE_URL : 'http://localhost:8000/api/v1';
 
 // Keep popup open when switching tabs
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

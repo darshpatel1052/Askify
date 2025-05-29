@@ -1,0 +1,3 @@
+# Ignore all ChromaDB contents but keep the directory
+chromadb/*
+!chromadb/.gitkeep

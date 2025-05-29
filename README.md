@@ -41,13 +41,31 @@ Paperwise follows a client-server architecture:
 
 1. **Prerequisites**:
    - Python 3.8+ installed
-   - Supabase account 
+   - Supabase account (optional, for user management)
    - OpenAI API key
 
-2. **Installation**:
+2. **Environment Configuration**:
    ```bash
    cd backend
-   python setup.py
+   cp .env.sample .env
+   ```
+   Edit the `.env` file and fill in your configuration:
+   - Generate a secret key using the provided script: `python scripts/generate_keys.py --type=hex`
+   - Add your OpenAI API key
+   - Add Supabase credentials (if using Supabase)
+
+3. **Installation**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the backend**:
+   ```bash
+   python run.py
+   ```
+   Or with Docker:
+   ```bash
+   docker-compose up -d
    ```
 
 3. **Configuration**:
@@ -68,16 +86,28 @@ Paperwise follows a client-server architecture:
 
 ### Chrome Extension Setup
 
-1. **Install Extension in Developer Mode**:
+1. **Configuration**:
+   - Edit the `extension/config.js` file to set your API URL and other settings:
+     ```javascript
+     // In development mode
+     API_BASE_URL: 'http://localhost:8000/api/v1'
+     
+     // In production mode
+     API_BASE_URL: 'https://your-production-api.com/api/v1'
+     ```
+
+2. **Install Extension in Developer Mode**:
    - Open Chrome and navigate to `chrome://extensions/`
    - Enable "Developer mode"
    - Click "Load unpacked" and select the `extension` folder
 
-2. **Configure API URL**:
-   - The extension is configured to use `http://localhost:8000/api/v1` by default
-   - For production, update `API_BASE_URL` in:
-     - `extension/background/background.js`
-     - `extension/popup/popup.js`
+3. **Update CORS Settings**:
+   - After loading the extension, get your extension ID from Chrome
+   - Update the `.env` file in the backend with your extension ID:
+     ```
+     ALLOWED_ORIGINS="chrome-extension://YOUR_EXTENSION_ID,http://localhost:3000"
+     ```
+   - Restart the backend server
 
 ## Usage
 
