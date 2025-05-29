@@ -45,25 +45,25 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        fetch(`${API_BASE_URL}/auth/login`, {
+        fetch(`${API_BASE_URL}/auth/token`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/x-www-form-urlencoded'
             },
-            body: JSON.stringify({ email, password })
+            body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
         })
             .then(response => response.json())
             .then(data => {
-                if (data.token) {
-                    authToken = data.token;
+                if (data.access_token) {
+                    authToken = data.access_token;
                     chrome.storage.local.set({
-                        authToken: data.token,
+                        authToken: data.access_token,
                         userEmail: email
                     });
                     showLoggedInState(email);
                     fetchQueryHistory();
                 } else {
-                    displayMessage(data.message || 'Login failed');
+                    displayMessage(data.detail || 'Login failed');
                 }
             })
             .catch(error => {
@@ -146,7 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 loading.style.display = 'none';
                 if (data.answer) {
-                    answerBox.innerHTML = `<p>${data.answer}</p>`;
+                    // Convert markdown to HTML for proper rendering
+                    const formattedAnswer = markdownToHTML(data.answer);
+                    answerBox.innerHTML = formattedAnswer;
                     // Update history
                     fetchQueryHistory();
                 } else {
@@ -188,8 +190,44 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
-    // We're no longer extracting content in the frontend
-    // Content extraction is now handled by the backend using BeautifulSoup
+    // Simple markdown to HTML converter
+    function markdownToHTML(markdown) {
+        if (!markdown) return '';
+
+        // Process code blocks with language
+        let html = markdown.replace(/```(\w+)?\n([\s\S]*?)```/g, function (match, lang, code) {
+            return `<pre class="code-block ${lang || ''}"><code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+        });
+
+        // Process headers
+        html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+
+        // Process bold
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        // Process italic
+        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+        // Process lists
+        html = html.replace(/^\* (.*$)/gm, '<ul><li>$1</li></ul>');
+        html = html.replace(/^- (.*$)/gm, '<ul><li>$1</li></ul>');
+        html = html.replace(/^(\d+)\. (.*$)/gm, '<ol><li>$2</li></ol>');
+
+        // Fix multiple lists
+        html = html.replace(/<\/ul>\s*<ul>/g, '');
+        html = html.replace(/<\/ol>\s*<ol>/g, '');
+
+        // Process paragraphs
+        html = html.replace(/^(?!<[a-z])/gm, '<p>');
+        html = html.replace(/^<p>(.*?)$/gm, '<p>$1</p>');
+
+        // Process links
+        html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+        return html;
+    }
 
     // Display error/success messages
     function displayMessage(message) {

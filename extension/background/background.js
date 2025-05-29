@@ -92,37 +92,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-// Track browsing history (if the user has granted permission)
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    // Only proceed if the page has finished loading and the URL is valid
-    if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith('http')) {
-        // Check if user is logged in
-        chrome.storage.local.get(['authToken'], async (result) => {
-            if (result.authToken) {
-                // Send page visit information to the backend
-                try {
-                    // Send only tab info, not content (content will be extracted by backend)
-                    fetch(`${API_BASE_URL}/history/record`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${result.authToken}`
-                        },
-                        body: JSON.stringify({
-                            url: tab.url,
-                            title: tab.title,
-                            timestamp: new Date().toISOString(),
-                            metadata: {
-                                pageTitle: tab.title
-                            }
-                        })
-                    }).catch(error => {
-                        console.error('Error recording history:', error);
-                    });
-                } catch (error) {
-                    console.error('Error recording history:', error);
-                }
-            }
-        });
-    }
-});
+// We no longer track browsing history automatically
+// History is only recorded when a user makes a query

@@ -12,7 +12,7 @@ from app.services.user_service import authenticate_user, create_user, get_user_b
 from app.auth.password import verify_password, get_password_hash
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 class Token(BaseModel):
     access_token: str

@@ -15,8 +15,8 @@ from app.core.config import OPENAI_API_KEY
 # Initialize LLM
 llm = ChatOpenAI(
     openai_api_key=OPENAI_API_KEY,
-    model_name="gpt-3.5-turbo-16k",
-    temperature=0
+    model_name="gpt-40-mini",
+    temperature=0.2
 )
 
 def extract_webpage_content(url: str) -> str:

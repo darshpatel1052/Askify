@@ -25,22 +25,28 @@ def get_vector_store_for_user(user_id: str, embeddings):
     Returns:
         A LangChain Chroma vector store instance
     """
-    from langchain_community.vectorstores import Chroma
+    from langchain_chroma import Chroma
     
-    # Create a unique collection for this user
+    # Create a unique collection name for this user
     collection_name = f"user_{user_id}"
     
+    print(f"Attempting to get or create collection: {collection_name}")
+    # Use get_or_create_collection for robustness
     try:
-        # Try to get existing collection
-        collection = chroma_client.get_collection(collection_name)
-    except ValueError:
-        # Collection doesn't exist, create it
-        collection = chroma_client.create_collection(collection_name)
-    
+        collection = chroma_client.get_or_create_collection(
+            name=collection_name,
+        )
+        print(f"Successfully got or created collection: {collection_name}, ID: {collection.id}")
+    except Exception as e:
+        print(f"Error in get_or_create_collection for {collection_name}: {e}")
+        # Re-raise the exception if you want to handle it further up
+        # or handle it here (e.g., by raising an HTTPException)
+        raise
+
     # Return as LangChain vectorstore
     return Chroma(
         client=chroma_client,
-        collection_name=collection_name,
+        collection_name=collection_name, 
         embedding_function=embeddings
     )
 
@@ -66,7 +72,6 @@ def add_to_vector_store(
     Returns:
         The ID of the added content
     """
-    from langchain_community.vectorstores import Chroma
     from langchain_openai import OpenAIEmbeddings
     from langchain.text_splitter import RecursiveCharacterTextSplitter
     from langchain.schema import Document

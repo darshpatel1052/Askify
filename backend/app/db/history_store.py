@@ -113,3 +113,26 @@ def get_user_history(user_id: str, limit: int = 100, offset: int = 0):
         "browsing_history": browsing_response.data,
         "query_history": query_response.data
     }
+
+def get_query_history(user_id: str, limit: int = 10, offset: int = 0):
+    """
+    Get a user's query history
+    
+    Args:
+        user_id: The user's ID
+        limit: Maximum number of items to return
+        offset: Number of items to skip
+    
+    Returns:
+        List of query history items
+    """
+    # Get query history
+    query_response = supabase.table("query_history")\
+        .select("*")\
+        .eq("user_id", user_id)\
+        .order("timestamp", desc=True)\
+        .limit(limit)\
+        .offset(offset)\
+        .execute()
+    
+    return query_response.data

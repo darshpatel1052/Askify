@@ -39,23 +39,9 @@ async def record_history(
     request: HistoryRequest,
     current_user: User = Depends(get_current_user)
 ):
-    try:
-        # Title will come from frontend, but in the future we could 
-        # extract it in the backend if needed using BeautifulSoup
-        history_id = save_browsing_history(
-            user_id=current_user.id,
-            url=request.url,
-            title=request.title,
-            timestamp=request.timestamp,
-            metadata=request.metadata
-        )
-        
-        return {"success": True, "history_id": history_id}
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error recording history: {str(e)}"
-        )
+    # We're not automatically recording browsing history anymore
+    # History is only recorded when a query is made
+    return {"success": True, "message": "Automatic history recording is disabled"}
 
 @router.get("", response_model=HistoryResponse)
 async def get_history(

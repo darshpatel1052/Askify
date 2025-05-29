@@ -102,3 +102,82 @@ button:hover {
 #history-list li:hover {
     background-color: #f0f0f0;
 }
+
+/* Markdown styles for formatted content */
+#answer-box h1,
+#answer-box h2,
+#answer-box h3 {
+    margin-top: 10px;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+#answer-box h1 {
+    font-size: 18px;
+}
+
+#answer-box h2 {
+    font-size: 16px;
+}
+
+#answer-box h3 {
+    font-size: 14px;
+}
+
+#answer-box p {
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+#answer-box ul,
+#answer-box ol {
+    margin-left: 20px;
+    margin-bottom: 10px;
+}
+
+#answer-box li {
+    margin-bottom: 4px;
+}
+
+#answer-box pre.code-block {
+    background-color: #f5f5f5;
+    padding: 8px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin-bottom: 10px;
+    font-family: monospace;
+}
+
+#answer-box strong {
+    font-weight: bold;
+}
+
+#answer-box em {
+    font-style: italic;
+}
+
+#answer-box a {
+    color: #4a86e8;
+    text-decoration: none;
+}
+
+#answer-box a:hover {
+    text-decoration: underline;
+}
+
+#answer-box table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+#answer-box th,
+#answer-box td {
+    border: 1px solid #ddd;
+    padding: 4px;
+    text-align: left;
+}
+
+#answer-box th {
+    background-color: #f5f5f5;
+}
