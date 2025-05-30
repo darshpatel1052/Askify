@@ -1,6 +1,6 @@
 # API Keys and Security Guide
 
-This document provides guidance on how to handle API keys and sensitive information securely in the Paperwise project.
+This document provides guidance on how to handle API keys and sensitive information securely in the Askify project.
 
 ## Never commit API keys to version control
 

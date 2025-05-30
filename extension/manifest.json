@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Paperwise",
+    "name": "Askify",
     "version": "1.0.0",
     "description": "AI-powered query answering for webpages using LangChain and RAG",
     "action": {

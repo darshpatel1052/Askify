@@ -1,10 +1,10 @@
-# Paperwise: Smart Query Answering Chrome Extension
+# Askify: Smart Query Answering Chrome Extension
 
-Paperwise is a Chrome extension that enables users to ask questions about web pages they visit. It leverages LangChain and Retrieval Augmented Generation (RAG) to provide accurate, context-aware answers based on the webpage content.
+Askify is a Chrome extension that enables users to ask questions about web pages they visit. It leverages LangChain and Retrieval Augmented Generation (RAG) to provide accurate, context-aware answers based on the webpage content.
 
 ## Architecture
 
-Paperwise follows a client-server architecture:
+Askify follows a client-server architecture:
 
 1. **Chrome Extension Frontend**: User interface for interacting with the system
    - Provides a UI for users to ask questions about the current webpage

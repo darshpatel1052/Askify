@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate secure secret keys for Paperwise configuration.
+Generate secure secret keys for Askify configuration.
 Run this script to generate random secure keys for your .env file.
 """
 
@@ -17,7 +17,7 @@ def generate_jwt_secret(length=32):
     return base64.b64encode(secrets.token_bytes(length)).decode('utf-8')
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate secure keys for Paperwise')
+    parser = argparse.ArgumentParser(description='Generate secure keys for Askify')
     parser.add_argument('--type', choices=['hex', 'jwt'], default='hex',
                       help='Type of key to generate (hex or jwt)')
     parser.add_argument('--length', type=int, default=32,
@@ -25,7 +25,7 @@ def main():
     
     args = parser.parse_args()
     
-    print("\n=== Paperwise Security Key Generator ===\n")
+    print("\n=== Askify Security Key Generator ===\n")
     
     if args.type == 'hex':
         key = generate_secret_key(args.length)

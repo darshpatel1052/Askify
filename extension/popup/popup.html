@@ -4,63 +4,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paperwise</title>
+    <title>Askify</title>
+    <script src="../theme.js"></script>
     <link rel="stylesheet" href="../styles/popup.css">
 </head>
 
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Paperwise</h1>
-            <p>Get smart answers for any webpage</p>
-            <div class="settings-bar">
-                <button id="theme-toggle" class="icon-btn" title="Toggle dark mode">🌓</button>
-                <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
+        <header class="header">
+            <div class="header-center">
+                <div class="header-brand">
+                    <img src="../images/icon48.png" alt="Askify" class="header-logo">
+                    <h1>Askify</h1>
+                </div>
             </div>
-        </div>
+            <div class="header-right" id="header-controls" style="display: none;">
+                <div id="user-avatar" class="avatar-button">
+                    <img id="avatar-img" src="https://api.dicebear.com/7.x/initials/svg?seed=Guest" alt="User avatar">
+                </div>
+            </div>
+        </header>
 
-        <div id="auth-section" class="section">
-            <div id="login-form">
-                <input type="email" id="email" placeholder="Email">
-                <input type="password" id="password" placeholder="Password">
+        <div id="auth-section" class="auth-section">
+            <div class="logo-area">
+                <div class="auth-brand">
+                    <img src="../images/icon128.png" alt="Askify Logo" class="auth-logo">
+                    <h1 class="auth-title">Askify</h1>
+                </div>
+            </div>
+
+            <form id="login-form" class="auth-form">
+                <div class="input-group">
+                    <input type="email" id="email" class="input-field" placeholder="Email address">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="password" class="input-field" placeholder="Password">
+                </div>
                 <div id="auth-status" class="status-message"></div>
-                <button id="login-btn">Login</button>
-                <button id="signup-btn">Sign Up</button>
-            </div>
-            <div id="user-info" style="display: none;">
-                <p>Logged in as: <span id="user-email"></span></p>
-                <button id="logout-btn">Logout</button>
-            </div>
+                <div class="auth-actions">
+                    <button type="button" id="login-btn" class="btn btn-primary">Sign In</button>
+                    <button type="button" id="signup-btn" class="btn btn-outline">Create Account</button>
+                </div>
+            </form>
         </div>
 
-        <div id="query-section" class="section" style="display: none;">
-            <div class="input-container">
-                <textarea id="query-input" placeholder="Ask a question about this webpage..."></textarea>
-                <div class="char-counter"><span id="char-count">0</span>/280</div>
+        <div id="query-section" class="query-section" style="display: none;">
+            <div class="query-container">
+                <div class="input-group">
+                    <textarea id="query-input" class="query-input" placeholder="Ask anything about this webpage..."
+                        rows="3"></textarea>
+                    <div class="char-counter">
+                        <span id="char-count">0</span>/280
+                    </div>
+                </div>
+                <div class="query-actions">
+                    <button id="query-btn" class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                        </svg>
+                        Ask AI
+                    </button>
+                    <button id="clear-btn" class="btn btn-outline">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M3 6h18" />
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                        </svg>
+                        Clear
+                    </button>
+                </div>
             </div>
-            <div class="query-controls">
-                <button id="query-btn">Get Answer</button>
-                <button id="clear-btn">Clear</button>
-            </div>
-            <div id="loading" style="display: none;">
+
+            <div id="loading" class="loading" style="display: none;">
                 <div class="spinner"></div>
                 <p>Processing your query...</p>
             </div>
+
             <div id="query-status" class="status-message"></div>
-            <div id="result-container">
-                <div id="answer-box"></div>
-                <div class="answer-controls">
-                    <button id="copy-btn" class="icon-btn" title="Copy to clipboard">📋</button>
+
+            <div id="answer-section" class="answer-section" style="display: none;">
+                <div class="answer-header">
+                    <h3>AI Response</h3>
+                    <div class="answer-actions">
+                        <button id="copy-btn" class="btn btn-icon" title="Copy to clipboard">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                        </button>
+                        <button id="regenerate-btn" class="btn btn-icon" title="Regenerate response">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="23 4 23 10 17 10" />
+                                <polyline points="1 20 1 14 7 14" />
+                                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
+                <div id="answer-box" class="answer-content"></div>
             </div>
         </div>
 
-        <div id="history-section" class="section" style="display: none;">
-            <h3>Recent Queries</h3>
-            <ul id="history-list"></ul>
+        <div id="history-section" class="history-section" style="display: none;">
+            <div class="section-header">
+                <h2>Recent Queries</h2>
+                <button id="clear-history" class="btn btn-text">Clear All</button>
+            </div>
+            <div id="history-list" class="history-list"></div>
         </div>
     </div>
 
+    <div id="user-menu" class="user-menu" style="display: none;">
+        <div class="user-menu-header">
+            <img id="menu-avatar" class="menu-avatar" src="" alt="User avatar">
+            <span id="user-email" class="user-email"></span>
+        </div>
+        <div class="user-menu-items">
+            <button id="settings-btn" class="menu-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+                Settings
+            </button>
+            <button id="logout-btn" class="menu-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <script src="../config.js"></script>
     <script src="../popup/popup.js"></script>
 </body>
 

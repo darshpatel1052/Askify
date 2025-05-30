@@ -7,7 +7,7 @@ load_dotenv()
 
 # API settings
 API_V1_PREFIX = "/api/v1"
-PROJECT_NAME = "Paperwise"
+PROJECT_NAME = "Askify"
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 # Authentication

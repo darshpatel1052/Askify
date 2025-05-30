@@ -1,4 +1,4 @@
-// Configuration file for Paperwise Chrome Extension
+// Configuration file for Askify Chrome Extension
 // Change these settings before building the extension
 
 const CONFIG = {

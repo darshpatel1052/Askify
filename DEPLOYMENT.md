@@ -1,11 +1,11 @@
-# Deployment Guide for Paperwise
+# Deployment Guide for Askify
 
-This guide outlines how to deploy the Paperwise application using Docker containers on Railway or Google Cloud Platform (GCP).
+This guide outlines how to deploy the Askify application using Docker containers on Railway or Google Cloud Platform (GCP).
 
 ## Prerequisites
 
 - Docker and Docker Compose installed
-- Git repository with your Paperwise code
+- Git repository with your Askify code
 - Supabase account with database set up
 - OpenAI API key
 - Railway or GCP account for deployment
@@ -15,7 +15,7 @@ This guide outlines how to deploy the Paperwise application using Docker contain
 1. **Clone the repository**:
    ```bash
    git clone <your-repo-url>
-   cd Paperwise/backend
+   cd Askify/backend
    ```
 
 2. **Set up environment variables**:

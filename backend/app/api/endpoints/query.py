@@ -7,7 +7,7 @@ from datetime import datetime
 from app.api.endpoints.auth import get_current_user
 from app.models.user import User
 from app.services.query_service import answer_query
-from app.db.history_store import save_query_history, get_query_history
+from app.db.history_store import save_query_history, get_query_history, delete_user_history, delete_specific_query
 
 router = APIRouter()
 
@@ -24,6 +24,12 @@ class QueryResponse(BaseModel):
 
 class QueryHistoryResponse(BaseModel):
     history: list
+
+class DeleteHistoryRequest(BaseModel):
+    history_type: Optional[str] = "query"  # "query", "browsing", or "all"
+
+class DeleteQueryRequest(BaseModel):
+    query_id: str
 
 @router.post("/ask", response_model=QueryResponse)
 async def ask_query(
@@ -86,4 +92,65 @@ async def read_query_history(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving query history: {str(e)}"
+        )
+
+@router.delete("/history", status_code=status.HTTP_200_OK)
+async def clear_user_history(
+    request_body: DeleteHistoryRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Clear user's query history
+    """
+    try:
+        success = delete_user_history(current_user.id, request_body.history_type)
+        
+        if success:
+            return {
+                "success": True,
+                "message": f"{request_body.history_type.title()} history cleared successfully"
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to clear history"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error clearing history: {str(e)}"
+        )
+
+@router.delete("/history/query/{query_id}", status_code=status.HTTP_200_OK)
+async def delete_specific_query_endpoint(
+    query_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete a specific query from user's history
+    """
+    print(f"DELETE request for query_id: {query_id}, user_id: {current_user.id}")
+    
+    try:
+        success = delete_specific_query(current_user.id, query_id)
+        
+        if success:
+            print(f"Successfully deleted query {query_id} for user {current_user.id}")
+            return {
+                "success": True,
+                "message": "Query deleted successfully"
+            }
+        else:
+            print(f"Failed to delete query {query_id} for user {current_user.id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Query not found or already deleted"
+            )
+    except Exception as e:
+        print(f"Exception while deleting query {query_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting query: {str(e)}"
         )

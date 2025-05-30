@@ -2,7 +2,9 @@
 // Handles communication between the extension popup and content scripts
 // Also manages communication with the backend API
 
-// Include the config.js script in manifest.json
+// Import configuration
+importScripts('../config.js');
+
 // The CONFIG object will be available globally
 const API_BASE_URL = typeof CONFIG !== 'undefined' ? CONFIG.API_BASE_URL : 'http://localhost:8000/api/v1';
 

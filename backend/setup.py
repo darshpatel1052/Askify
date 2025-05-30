@@ -1,4 +1,4 @@
-# Setup.py for the Paperwise backend
+# Setup.py for the Askify backend
 
 import os
 import subprocess
@@ -57,7 +57,7 @@ def check_config():
 
 def main():
     """Run the setup process."""
-    print("Setting up Paperwise backend...")
+    print("Setting up Askify backend...")
     
     check_python_version()
     create_env_file()

@@ -118,7 +118,7 @@ def answer_query(user_id: str, query: str, url: str) -> Dict:
         return_source_documents=True,
         chain_type_kwargs={
             "prompt": PromptTemplate(
-                template="""You are a helpful, professional assistant that provides accurate and well-formatted information.
+                template="""You are a helpful, professional assistant that provides accurate and well-formatted information, try to be concise.
                 
                 Use Markdown formatting to organize your answers with headings, bullet points, bold text, etc.
                 For code blocks, use proper syntax highlighting with the appropriate language specified.

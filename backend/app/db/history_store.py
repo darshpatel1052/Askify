@@ -142,3 +142,72 @@ def get_query_history(user_id: str, limit: int = 10, offset: int = 0):
         .execute()
     
     return query_response.data
+
+def delete_user_history(user_id: str, history_type: str = "all") -> bool:
+    """
+    Delete a user's history (query history, browsing history, or both)
+    
+    Args:
+        user_id: The user's ID
+        history_type: Type of history to delete ("query", "browsing", or "all")
+    
+    Returns:
+        Boolean indicating success
+    """
+    try:
+        if history_type in ["query", "all"]:
+            # Delete query history
+            supabase.table("query_history")\
+                .delete()\
+                .eq("user_id", user_id)\
+                .execute()
+        
+        if history_type in ["browsing", "all"]:
+            # Delete browsing history
+            supabase.table("browsing_history")\
+                .delete()\
+                .eq("user_id", user_id)\
+                .execute()
+        
+        return True
+    except Exception as e:
+        print(f"Error deleting user history: {str(e)}")
+        return False
+
+def delete_specific_query(user_id: str, query_id: str) -> bool:
+    """
+    Delete a specific query from user's history
+    
+    Args:
+        user_id: The user's ID
+        query_id: The specific query ID to delete
+    
+    Returns:
+        Boolean indicating success
+    """
+    try:
+        # First check if the query exists
+        existing_query = supabase.table("query_history")\
+            .select("id")\
+            .eq("user_id", user_id)\
+            .eq("id", query_id)\
+            .execute()
+        
+        if not existing_query.data:
+            print(f"Query with id {query_id} not found for user {user_id}")
+            return False
+        
+        # Delete the query
+        result = supabase.table("query_history")\
+            .delete()\
+            .eq("user_id", user_id)\
+            .eq("id", query_id)\
+            .execute()
+        
+        print(f"Successfully deleted query {query_id} for user {user_id}")
+        return True
+    except Exception as e:
+        print(f"Error deleting specific query: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False

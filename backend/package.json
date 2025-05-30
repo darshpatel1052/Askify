@@ -1,7 +1,7 @@
 {
-    "name": "paperwise-backend",
+    "name": "askify-backend",
     "version": "1.0.0",
-    "description": "Backend for Paperwise Chrome extension",
+    "description": "Backend for Askify Chrome extension",
     "main": "src/server.js",
     "scripts": {
         "start": "node src/server.js",
