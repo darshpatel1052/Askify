@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Aggressive popup persistence - prevent auto-closing
+    window.keepAlive = true;
+    let isPopupManuallyClosing = false;
+
     // DOM elements
     const authSection = document.getElementById('auth-section');
     const loginForm = document.getElementById('login-form');
@@ -36,29 +40,88 @@ document.addEventListener('DOMContentLoaded', () => {
     let maxHistoryItems = CONFIG.DEFAULT_MAX_HISTORY || 5;
     let isOfflineMode = CONFIG.DEFAULT_OFFLINE_MODE || false;
 
-    // Prevent popup from closing when switching tabs
-    chrome.runtime.sendMessage({ action: 'keepPopupOpen' }, (response) => {
-        console.log('Keeping popup open:', response?.success);
-    });
+    // Establish long-lived connection to prevent popup from closing
+    let port = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 50; // Increased attempts
+    let keepAliveInterval = null;
 
-    // Listen for tab switched events
-    chrome.runtime.onMessage.addListener((message) => {
-        if (message.action === 'tabSwitched') {
-            // Re-focus the popup window when tab is switched
-            window.focus();
-            return true;
+    function connectToBackground() {
+        try {
+            port = chrome.runtime.connect({ name: "popup" });
+            reconnectAttempts = 0; // Reset on successful connection
+
+            port.onMessage.addListener((message) => {
+                if (message.action === 'connected') {
+                    console.log('Successfully connected to background script');
+                } else if (message.action === 'tabSwitched' || message.action === 'windowFocused') {
+                    // Keep popup alive when tab or window changes
+                    if (window.keepAlive && !isPopupManuallyClosing) {
+                        window.focus();
+                    }
+                }
+            });
+
+            port.onDisconnect.addListener(() => {
+                port = null;
+                // Only reconnect if we're not manually closing and haven't exceeded max attempts
+                if (!isPopupManuallyClosing && reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    console.log(`Reconnecting to background (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+                    setTimeout(connectToBackground, Math.min(500 * reconnectAttempts, 2000));
+                }
+            });
+
+        } catch (error) {
+            console.error('Failed to connect to background:', error);
+            // Retry connection after a delay if we haven't exceeded max attempts
+            if (!isPopupManuallyClosing && reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                setTimeout(connectToBackground, Math.min(500 * reconnectAttempts, 2000));
+            }
         }
-    });
+    }
 
-    // Create a ping interval to keep the popup alive
-    const pingInterval = setInterval(() => {
-        chrome.runtime.sendMessage({ action: 'keepPopupOpen' }, (response) => {
-            if (!response) {
-                // If we get no response, the background script might be inactive
-                clearInterval(pingInterval);
+    // Initial connection
+    connectToBackground();
+
+    // Simple keep-alive mechanism - less aggressive
+    keepAliveInterval = setInterval(() => {
+        if (window.keepAlive && !isPopupManuallyClosing && port) {
+            try {
+                port.postMessage({ action: 'ping' });
+            } catch (error) {
+                console.log('Ping failed, reconnecting...');
+                connectToBackground();
+            }
+        }
+    }, 5000); // Ping every 5 seconds instead of every second
+
+    // Basic activity tracking to keep popup alive
+    const activityEvents = ['click', 'input'];
+    activityEvents.forEach(eventType => {
+        document.addEventListener(eventType, () => {
+            if (port && !isPopupManuallyClosing) {
+                try {
+                    port.postMessage({ action: 'ping' });
+                } catch (error) {
+                    connectToBackground();
+                }
             }
         });
-    }, 5000); // Send a ping every 5 seconds (reduced from 25s for better responsiveness)
+    });
+
+    // Detect when user manually closes popup (clicks extension icon)
+    chrome.action.onClicked.addListener(() => {
+        isPopupManuallyClosing = true;
+        window.keepAlive = false;
+        if (keepAliveInterval) {
+            clearInterval(keepAliveInterval);
+        }
+        if (port) {
+            port.disconnect();
+        }
+    });
 
     // Check if user is logged in and restore previous state
     chrome.storage.local.get(['authToken', 'userEmail', 'lastQuery', 'lastAnswer', 'isProcessing', 'maxHistory', 'saveOffline'], (result) => {

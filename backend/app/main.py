@@ -26,3 +26,12 @@ app.include_router(api_router, prefix=API_V1_PREFIX)
 @app.get("/")
 async def root():
     return {"message": f"Welcome to {PROJECT_NAME} API"}
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Docker and load balancers"""
+    return {
+        "status": "healthy",
+        "service": PROJECT_NAME,
+        "version": "1.0.0"
+    }

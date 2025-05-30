@@ -86,18 +86,17 @@
             <div id="query-status" class="status-message"></div>
 
             <div id="answer-section" class="answer-section" style="display: none;">
-                <div class="answer-header">
-                    <h3>AI Response</h3>
-                    <div class="answer-actions">
-                        <button id="copy-btn" class="btn btn-icon" title="Copy to clipboard">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                <div class="answer-container">
+                    <div class="answer-actions-top">
+                        <button id="copy-btn" class="btn btn-icon-small" title="Copy to clipboard">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                             </svg>
                         </button>
-                        <button id="regenerate-btn" class="btn btn-icon" title="Regenerate response">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        <button id="regenerate-btn" class="btn btn-icon-small" title="Regenerate response">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
                                 <polyline points="23 4 23 10 17 10" />
                                 <polyline points="1 20 1 14 7 14" />
@@ -105,8 +104,8 @@
                             </svg>
                         </button>
                     </div>
+                    <div id="answer-box" class="answer-content"></div>
                 </div>
-                <div id="answer-box" class="answer-content"></div>
             </div>
         </div>
 
