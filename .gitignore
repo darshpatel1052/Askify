@@ -1,3 +1,34 @@
-# Ignore all ChromaDB contents but keep the directory
-chromadb/*
-!chromadb/.gitkeep
+# Ignore ChromaDB data files but keep directory structure
+backend/chromadb/*
+!backend/chromadb/.gitkeep
+
+# Environment files with secrets
+backend/.env
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
