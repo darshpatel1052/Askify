@@ -2,7 +2,7 @@
 
 Askify is an intelligent Chrome extension that allows users to ask questions about any webpage they're visiting. Using advanced AI and Retrieval Augmented Generation (RAG), it provides accurate, context-aware answers based on the webpage content.
 
-![Askify Extension](srcs/image.png)
+![Askify Extension Logo and Name](srcs/name_and_logo.png)
 
 ## 🚀 Features
 
@@ -27,7 +27,7 @@ Askify follows a secure client-server architecture:
 4. **User Database**: Supabase for user management and history storage
 5. **AI Integration**: OpenAI models via LangChain for content analysis
 
-![Architecture Diagram](srcs/image.png)
+![Architecture Diagram](srcs/architect.png)
 
 ## 📋 Prerequisites
 
@@ -99,6 +99,8 @@ INFO:     Uvicorn running on http://0.0.0.0:8000
 
 ## 🔧 Chrome Extension Setup
 
+![Authentication Page](srcs/auth_page.png)
+
 ### 1. Configure the Extension
 Edit `extension/config.js` to point to your backend:
 ```javascript
@@ -127,6 +129,8 @@ const CONFIG = {
    ```
 
 ## 🎯 Usage
+
+![Ask Interface](srcs/ask_interface.png)
 
 ### Getting Started
 1. **Navigate** to any webpage in Chrome
