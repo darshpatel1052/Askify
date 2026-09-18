@@ -1,105 +1,54 @@
-# Vector database storage using ChromaDB
+# Vector database storage with ChromaDB & Zero-Crash Fallback (Askify Next-Gen)
 import os
 import uuid
-import chromadb
-from chromadb.config import Settings
-from typing import Optional, List, Dict
+import re
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from urllib.parse import urlparse
 
-from app.core.config import VECTOR_DB_PATH
+from app.core.config import VECTOR_DB_PATH, OPENAI_API_KEY
 
-# Ensure the vector DB directory exists
 os.makedirs(VECTOR_DB_PATH, exist_ok=True)
 
-# Initialize ChromaDB client
-chroma_client = chromadb.PersistentClient(path=VECTOR_DB_PATH, settings=Settings(anonymized_telemetry=False))
+# In-memory document chunk store for resilient fallback
+_LOCAL_CHUNKS: Dict[str, List[Dict[str, Any]]] = {}
 
-def get_vector_store_for_user(user_id: str, embeddings):
-    """
-    Get or create a Chroma collection for the user
-    
-    Args:
-        user_id: The user's unique identifier
-        embeddings: The embeddings model to use
-    
-    Returns:
-        A LangChain Chroma vector store instance
-    """
-    from langchain_chroma import Chroma
-    
-    # Create a unique collection name for this user
-    collection_name = f"user_{user_id}"
-    
+# ChromaDB Client setup
+chroma_client = None
+try:
+    import chromadb
+    from chromadb.config import Settings
+    chroma_client = chromadb.PersistentClient(path=VECTOR_DB_PATH, settings=Settings(anonymized_telemetry=False))
+except Exception as e:
+    print(f"[WARN] ChromaDB initialization skipped/failed ({e}). Using in-memory store.")
+    chroma_client = None
 
-    # Use get_or_create_collection for robustness
-    try:
-        collection = chroma_client.get_or_create_collection(
-            name=collection_name,
-        )
-    except Exception as e:
-        print(f"Error in get_or_create_collection for {collection_name}: {e}")
-        # Re-raise the exception if you want to handle it further up
-        # or handle it here (e.g., by raising an HTTPException)
-        raise
+def get_fallback_chunks(content: str, max_chunk_size: int = 1200, overlap: int = 150) -> List[str]:
+    """Smart paragraph-aware chunking without external library dependencies"""
+    paragraphs = content.split('\n\n')
+    chunks = []
+    current_chunk = []
+    current_length = 0
 
-    # Return as LangChain vectorstore
-    return Chroma(
-        client=chroma_client,
-        collection_name=collection_name, 
-        embedding_function=embeddings
-    )
+    for p in paragraphs:
+        p = p.strip()
+        if not p:
+            continue
+        p_len = len(p)
+        if current_length + p_len > max_chunk_size and current_chunk:
+            chunks.append('\n\n'.join(current_chunk))
+            current_chunk = [p]
+            current_length = p_len
+        else:
+            current_chunk.append(p)
+            current_length += p_len + 2
 
-# Check if our collection has any documents
-def collection_has_documents(user_id: str, embeddings) -> bool:
-    """
-    Check if the user's vector store collection has any documents at all.
-    
-    Args:
-        user_id: The user's unique identifier
-        embeddings: The embeddings model to use
-        
-    Returns:
-        True if the collection has documents, False otherwise
-    """
-    vector_store = get_vector_store_for_user(user_id, embeddings)
-    # A simple similarity search with an empty query to see if anything comes back
-    try:
-        results = vector_store.similarity_search_with_score(
-            query=" ", 
-            k=1
-        )
-        return len(results) > 0
-    except Exception as e:
-        print(f"[{user_id}] Error checking if collection has documents: {e}")
-        return False
+    if current_chunk:
+        chunks.append('\n\n'.join(current_chunk))
 
-def url_exists_in_vector_store(user_id: str, url: str, embeddings) -> bool:
-    """
-    Check if content for a given URL already exists in the user's vector store.
-
-    Args:
-        user_id: The user's unique identifier.
-        url: The URL to check.
-        embeddings: The embeddings model to use.
-
-    Returns:
-        True if the URL exists, False otherwise.
-    """
-
-    try:
-        vector_store = get_vector_store_for_user(user_id, embeddings)
-        # Perform a search with a filter for the exact source URL
-        results = vector_store.similarity_search_with_score(
-            query=" ",  # Dummy query, filter is what matters
-            k=1,
-            filter={"source": url} 
-        )
-        exists = len(results) > 0
-
-        return exists
-    except Exception as e:
-        return False
+    if not chunks and content:
+        chunks = [content[:max_chunk_size]]
+    return chunks
 
 def add_to_vector_store(
     user_id: str,
@@ -109,150 +58,113 @@ def add_to_vector_store(
     embeddings=None,
     timestamp: Optional[datetime] = None
 ) -> str:
-    """
-    Add content to the vector store using semantic chunking
-    
-    Args:
-        user_id: The user's unique identifier
-        content: The content to add
-        url: The URL of the content
-        summary: Optional summary of the content
-        embeddings: The embeddings model to use
-        timestamp: When the content was processed
-    
-    Returns:
-        The ID of the added content
-    """
-    from langchain_openai import OpenAIEmbeddings
-    from langchain_experimental.text_splitter import SemanticChunker
-    from app.core.config import OPENAI_API_KEY
-    
-    # If no embeddings model provided, use OpenAI
-    if embeddings is None:
-        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-    
-    # Get vector store for user
-    vector_store = get_vector_store_for_user(user_id, embeddings)
-    
-    # Use SemanticChunker for more intelligent, meaning-based chunking
-    print(f"[{user_id}] Using SemanticChunker for URL '{url}'")
-    text_splitter = SemanticChunker(
-    OpenAIEmbeddings(), breakpoint_threshold_type="percentile", breakpoint_threshold_amount=80
-    )
-    
-    # Extract URL details for metadata
-    parsed_url = urlparse(url)
-    url_path = parsed_url.path
-    
-    # Create detailed metadata for precise filtering
-    metadata = {
-        "source": url,
-        "domain": parsed_url.netloc,
-        "url_path": url_path,
-        "full_url": url,  # Store the complete URL for exact matching
-        "timestamp": timestamp.isoformat() if timestamp else datetime.utcnow().isoformat(),
-    }
-    
-    if summary:
-        metadata["summary"] = summary
-    
-    # Create a document with the content and metadata
-
-    # SemanticChunker expects a list of texts, not Documents
-    # So we'll create chunks first, then convert to Documents with metadata
-    chunks = text_splitter.create_documents([content])
-    
-    
-    # Generate a unique content ID
+    """Index content into ChromaDB or fallback store with paragraph-aware chunking"""
     content_id = str(uuid.uuid4())
-    
-    # Ensure each chunk has complete metadata
+    parsed = urlparse(url)
+    base_meta = {
+        "source": url,
+        "domain": parsed.netloc,
+        "full_url": url,
+        "timestamp": timestamp.isoformat() if timestamp else datetime.utcnow().isoformat(),
+        "summary": summary or ""
+    }
+
+    chunks = get_fallback_chunks(content)
+
+    # Store in fallback registry
+    if user_id not in _LOCAL_CHUNKS:
+        _LOCAL_CHUNKS[user_id] = []
+
     for i, chunk in enumerate(chunks):
-        # Add chunk ID and content ID to metadata
-        chunk.metadata["chunk_id"] = f"{content_id}_{i}"
-        chunk.metadata["content_id"] = content_id
-        
-        # Add all our custom metadata
-        for key, value in metadata.items():
-            chunk.metadata[key] = value
-    
-    # Add chunks to vector store
+        doc = {
+            "id": f"{content_id}_{i}",
+            "content": chunk,
+            "metadata": {**base_meta, "chunk_id": f"{content_id}_{i}", "content_id": content_id}
+        }
+        _LOCAL_CHUNKS[user_id].append(doc)
 
-    vector_store.add_documents(chunks)
+    # Attempt ChromaDB indexing if available
+    if chroma_client:
+        try:
+            coll_name = f"user_{user_id}".replace("-", "_")
+            collection = chroma_client.get_or_create_collection(name=coll_name)
+            ids = [f"{content_id}_{i}" for i in range(len(chunks))]
+            metas = [{**base_meta, "chunk_id": f"{content_id}_{i}"} for i in range(len(chunks))]
+            collection.add(
+                documents=chunks,
+                metadatas=metas,
+                ids=ids
+            )
+        except Exception as e:
+            print(f"[INFO] Chroma add skipped/failed ({e}). Preserved in fallback store.")
 
-    
     return content_id
 
-def get_user_document_chunks(user_id: str, embeddings, url: Optional[str] = None, limit: int = 50) -> List[Dict]:
-    """
-    Get document chunks stored for a user, optionally filtered by URL
-    
-    Args:
-        user_id: The user's unique identifier
-        embeddings: The embeddings model to use
-        url: Optional URL to filter by
-        limit: Maximum number of chunks to return
-        
-    Returns:
-        List of document chunks with their metadata
-    """
-    try:
-        print(f"[{user_id}] Retrieving document chunks" + (f" for URL: {url}" if url else ""))
-        
-        # Get vector store for user
-        vector_store = get_vector_store_for_user(user_id, embeddings)
-        
-        # Get the raw client and collection
-        collection = vector_store._collection
-        
-        # Prepare the filter
-        filter_dict = {}
-        if url:
-            # Try full_url first
-            try:
-                # Try exact URL match
-                filter_dict = {"full_url": url}
-                results = collection.get(
-                    where=filter_dict,
-                    limit=limit
-                )
-                
-                # If no results, try source filter
-                if not results["metadatas"]:
-                    filter_dict = {"source": url}
-                    results = collection.get(
-                        where=filter_dict,
-                        limit=limit
-                    )
-                    
-                    # If still no results, try domain
-                    if not results["metadatas"]:
-                        parsed_url = urlparse(url)
-                        domain = parsed_url.netloc
-                        filter_dict = {"domain": domain}
-                        results = collection.get(
-                            where=filter_dict,
-                            limit=limit
-                        )
-            except Exception as e:
-                print(f"[{user_id}] Error with URL filter: {e}. Getting all documents.")
-                results = collection.get(limit=limit)
-        else:
-            # Get all documents
-            results = collection.get(limit=limit)
-        
-        # Format the results
-        chunks = []
-        for i in range(len(results["ids"])):
-            chunk = {
-                "id": results["ids"][i],
-                "content": results["documents"][i],
-                "metadata": results["metadatas"][i] if i < len(results["metadatas"]) else {}
-            }
-            chunks.append(chunk)
-        
-        print(f"[{user_id}] Retrieved {len(chunks)} document chunks")
-        return chunks
-    except Exception as e:
-        print(f"[{user_id}] Error retrieving document chunks: {e}")
+def url_exists_in_vector_store(user_id: str, url: str, embeddings=None) -> bool:
+    """Check if content for URL is indexed"""
+    if user_id in _LOCAL_CHUNKS:
+        if any(doc["metadata"].get("full_url") == url or doc["metadata"].get("source") == url for doc in _LOCAL_CHUNKS[user_id]):
+            return True
+
+    if chroma_client:
+        try:
+            coll_name = f"user_{user_id}".replace("-", "_")
+            collection = chroma_client.get_collection(name=coll_name)
+            res = collection.get(where={"source": url}, limit=1)
+            return len(res.get("ids", [])) > 0
+        except Exception:
+            return False
+    return False
+
+def collection_has_documents(user_id: str, embeddings=None) -> bool:
+    """Check if user has any documents"""
+    if user_id in _LOCAL_CHUNKS and len(_LOCAL_CHUNKS[user_id]) > 0:
+        return True
+    if chroma_client:
+        try:
+            coll_name = f"user_{user_id}".replace("-", "_")
+            collection = chroma_client.get_collection(name=coll_name)
+            return collection.count() > 0
+        except Exception:
+            return False
+    return False
+
+def search_relevant_chunks(user_id: str, query: str, url: Optional[str] = None, k: int = 4) -> List[Dict[str, Any]]:
+    """Hybrid search: Chroma similarity search with BM25 / keyword scoring fallback"""
+    results = []
+
+    if chroma_client:
+        try:
+            coll_name = f"user_{user_id}".replace("-", "_")
+            collection = chroma_client.get_collection(name=coll_name)
+            where_filter = {"source": url} if url else None
+            res = collection.query(query_texts=[query], n_results=k, where=where_filter)
+            if res and res.get("documents") and res["documents"][0]:
+                for i, doc in enumerate(res["documents"][0]):
+                    results.append({
+                        "content": doc,
+                        "metadata": res["metadatas"][0][i] if res.get("metadatas") else {},
+                        "score": 0.85
+                    })
+                return results
+        except Exception:
+            pass
+
+    # Keyword scoring fallback
+    user_docs = _LOCAL_CHUNKS.get(user_id, [])
+    if url:
+        user_docs = [d for d in user_docs if d["metadata"].get("full_url") == url or d["metadata"].get("source") == url]
+
+    if not user_docs:
         return []
+
+    words = set(re.findall(r'\w+', query.lower()))
+    scored = []
+    for d in user_docs:
+        doc_words = set(re.findall(r'\w+', d["content"].lower()))
+        overlap = len(words.intersection(doc_words))
+        score = overlap / max(1, len(words))
+        scored.append((score, d))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [{"content": d["content"], "metadata": d["metadata"], "score": s} for s, d in scored[:k]]

@@ -1,21 +1,26 @@
 {
     "manifest_version": 3,
-    "name": "Askify",
-    "version": "1.0.0",
-    "description": "AI-powered query answering for webpages using LangChain and RAG",
+    "name": "Askify - AI Web Assistant & Copilot",
+    "version": "2.0.0",
+    "description": "Next-Gen AI Web Copilot with Chrome Side Panel, real-time streaming, in-page selection assistant, and deep RAG page analysis.",
     "action": {
         "default_popup": "popup/popup.html",
         "default_icon": {
             "16": "images/icon16.png",
             "48": "images/icon48.png",
             "128": "images/icon128.png"
-        }
+        },
+        "default_title": "Open Askify"
+    },
+    "side_panel": {
+        "default_path": "sidepanel/sidepanel.html"
     },
     "permissions": [
+        "sidePanel",
         "activeTab",
         "storage",
         "scripting",
-        "identity",
+        "contextMenus",
         "clipboardWrite",
         "tabs"
     ],
@@ -33,9 +38,29 @@
             ],
             "js": [
                 "content/content.js"
-            ]
+            ],
+            "css": [
+                "content/content.css"
+            ],
+            "run_at": "document_idle"
         }
     ],
+    "commands": {
+        "_execute_action": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+Y",
+                "mac": "Command+Shift+Y"
+            },
+            "description": "Open Askify Assistant"
+        },
+        "open_side_panel": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+K",
+                "mac": "Command+Shift+K"
+            },
+            "description": "Open Askify Side Panel"
+        }
+    },
     "icons": {
         "16": "images/icon16.png",
         "48": "images/icon48.png",

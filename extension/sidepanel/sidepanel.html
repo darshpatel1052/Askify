@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Askify Copilot</title>
+    <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body data-theme="dark">
+    <div class="sidepanel-container">
+        <!-- 1. Header & Navigation -->
+        <header class="sp-header">
+            <div class="sp-brand">
+                <div class="sp-logo-wrap">
+                    <svg width="22" height="22" viewBox="0 0 128 128" fill="none">
+                        <defs>
+                            <linearGradient id="sp-bg" x1="12" y1="12" x2="116" y2="116" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#6366F1"/>
+                                <stop offset="50%" stop-color="#8B5CF6"/>
+                                <stop offset="100%" stop-color="#06B6D4"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="12" y="12" width="104" height="104" rx="28" fill="url(#sp-bg)"/>
+                        <path d="M64 28L40 86H52.5L58 72H70L75.5 86H88L64 28ZM64 43.5L67.8 62.5H60.2L64 43.5Z" fill="#FFFFFF"/>
+                        <circle cx="88" cy="37" r="7" fill="#FDE047"/>
+                        <circle cx="64" cy="95" r="4" fill="#FFFFFF"/>
+                    </svg>
+                </div>
+                <div class="sp-title-group">
+                    <span class="sp-brand-name">Askify</span>
+                    <span class="sp-badge-pill">v2.0</span>
+                </div>
+            </div>
+
+            <div class="sp-header-actions">
+                <!-- Model Selector -->
+                <div class="sp-model-select-wrapper">
+                    <select id="model-select" class="sp-select" title="Active Model">
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gpt-4o">GPT-4o</option>
+                        <option value="gemini-1.5-flash">Gemini Flash</option>
+                        <option value="claude-3-5-sonnet">Claude 3.5</option>
+                        <option value="llama3:8b">Ollama (Local)</option>
+                    </select>
+                </div>
+
+                <!-- Theme Toggle -->
+                <button id="theme-toggle-btn" class="sp-icon-btn" title="Toggle Light/Dark Theme">
+                    <svg class="sun-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="moon-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+
+                <!-- Settings Button -->
+                <button id="settings-open-btn" class="sp-icon-btn" title="Settings & API Keys">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- 2. Active Tab Status Card -->
+        <div class="sp-tab-context-bar" id="page-context-bar">
+            <div class="sp-tab-info">
+                <span class="sp-status-dot online" id="status-dot"></span>
+                <span class="sp-tab-title" id="active-tab-title">Reading page...</span>
+            </div>
+            <div class="sp-tab-meta">
+                <span class="sp-meta-chip" id="word-count-chip">0 words</span>
+                <button id="refresh-page-btn" class="sp-chip-btn" title="Re-extract page content">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. Quick Action Power Bar -->
+        <div class="sp-quick-actions" id="quick-actions-bar">
+            <button class="sp-action-chip" data-prompt="Provide a concise TL;DR executive summary with top takeaways in bullet points.">
+                <span>⚡ TL;DR</span>
+            </button>
+            <button class="sp-action-chip" data-prompt="Extract the core insights, key arguments, and non-obvious ideas from this page.">
+                <span>🧠 Insights</span>
+            </button>
+            <button class="sp-action-chip" data-prompt="Extract and tabulate all structured data, statistics, metrics, and comparisons mentioned on this page into a markdown table.">
+                <span>📊 Data</span>
+            </button>
+            <button class="sp-action-chip" data-prompt="Identify any concrete action items, next steps, or practical recommendations from this page.">
+                <span>🎯 Actions</span>
+            </button>
+            <button class="sp-action-chip" data-prompt="Generate 5 insightful FAQs with clear answers based strictly on this page.">
+                <span>❓ FAQs</span>
+            </button>
+            <button class="sp-action-chip" data-prompt="Explain the key concept on this page in simple terms like I am 5 years old (ELI5).">
+                <span>✨ ELI5</span>
+            </button>
+            <button class="sp-action-chip" data-prompt="Critically review this content for bias, missing context, and potential counter-arguments.">
+                <span>🔍 Fact-Check</span>
+            </button>
+        </div>
+
+        <!-- 4. Chat Messages Scroll Area -->
+        <main class="sp-chat-feed" id="chat-feed">
+            <!-- Welcome Empty State -->
+            <div class="sp-welcome-state" id="welcome-state">
+                <div class="sp-welcome-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                    </svg>
+                </div>
+                <h3>Askify AI Assistant</h3>
+                <p>Ready to analyze this webpage. Ask any question, click a power tool above, or select text on the page to dive in!</p>
+                <div class="sp-suggested-list">
+                    <div class="sp-suggested-card" data-prompt="What are the main arguments or thesis presented here?">
+                        <span>"What are the main arguments presented here?"</span>
+                    </div>
+                    <div class="sp-suggested-card" data-prompt="Is there any code, steps, or instructions I should know about?">
+                        <span>"Are there code or technical steps mentioned?"</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 5. Active Focus Indicator (Selection / Scope) -->
+        <div class="sp-focus-indicator" id="focus-indicator" style="display: none;">
+            <div class="sp-focus-tag">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span id="focus-text">Focus: Selected Text (0 words)</span>
+            </div>
+            <button id="clear-focus-btn" class="sp-focus-clear" title="Clear selection focus">✕</button>
+        </div>
+
+        <!-- 6. Input Area -->
+        <footer class="sp-input-area">
+            <div class="sp-input-box">
+                <textarea id="query-textarea" placeholder="Ask anything about this page..." rows="1"></textarea>
+                <div class="sp-input-bottom">
+                    <div class="sp-input-tools">
+                        <button id="export-chat-btn" class="sp-tool-btn" title="Export as Markdown">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </button>
+                        <button id="clear-chat-btn" class="sp-tool-btn" title="Clear Conversation">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <button id="send-btn" class="sp-send-btn" title="Send (Enter)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </footer>
+
+        <!-- 7. Settings Modal -->
+        <div class="sp-modal-backdrop" id="settings-modal" style="display: none;">
+            <div class="sp-modal-card">
+                <div class="sp-modal-header">
+                    <h3>Settings & Keys</h3>
+                    <button id="settings-close-btn" class="sp-modal-close">✕</button>
+                </div>
+                <div class="sp-modal-body">
+                    <!-- Engine Mode -->
+                    <div class="sp-field-group">
+                        <label>Engine Mode</label>
+                        <select id="engine-mode-select" class="sp-input">
+                            <option value="backend">FastAPI Backend (ChromaDB RAG)</option>
+                            <option value="byok">Standalone BYOK (Direct Client Key)</option>
+                        </select>
+                        <span class="sp-field-hint">BYOK works instantly in your browser without running any local backend server.</span>
+                    </div>
+
+                    <!-- Backend API URL -->
+                    <div class="sp-field-group" id="backend-url-group">
+                        <label>Backend API Base URL</label>
+                        <input type="text" id="backend-url-input" class="sp-input" placeholder="http://localhost:8000/api/v1">
+                    </div>
+
+                    <!-- Client-Side API Keys -->
+                    <div class="sp-field-group">
+                        <label>OpenAI API Key (BYOK)</label>
+                        <input type="password" id="openai-key-input" class="sp-input" placeholder="sk-...">
+                    </div>
+
+                    <div class="sp-field-group">
+                        <label>Google Gemini API Key (BYOK)</label>
+                        <input type="password" id="gemini-key-input" class="sp-input" placeholder="AIza...">
+                    </div>
+
+                    <div class="sp-field-group">
+                        <label>Anthropic API Key (BYOK)</label>
+                        <input type="password" id="anthropic-key-input" class="sp-input" placeholder="sk-ant-...">
+                    </div>
+
+                    <div class="sp-field-group">
+                        <label>Ollama Local Base URL</label>
+                        <input type="text" id="ollama-url-input" class="sp-input" placeholder="http://localhost:11434">
+                    </div>
+                </div>
+                <div class="sp-modal-footer">
+                    <button id="save-settings-btn" class="sp-btn-primary">Save Preferences</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="../config.js"></script>
+    <script src="sidepanel.js"></script>
+</body>
+</html>

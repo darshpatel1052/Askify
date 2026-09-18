@@ -1,20 +1,49 @@
-# Query Endpoints
+# Query Endpoints with Real-time SSE Streaming (Askify Next-Gen)
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Dict, Optional
-from datetime import datetime
+from typing import Dict, Optional, List, Any
+from datetime import datetime, timezone
 
-from app.api.endpoints.auth import get_current_user
+from app.api.endpoints.auth import oauth2_scheme
 from app.models.user import User
-from app.services.query_service import answer_query
-from app.db.history_store import save_query_history, get_query_history, delete_user_history, delete_specific_query
+from app.services.user_service import get_user_by_email
+from app.core.config import SECRET_KEY, ALGORITHM
+from jose import jwt, JWTError
+
+from app.services.query_service import answer_query, stream_query_tokens
+from app.db.storage_factory import save_query_history, get_query_history, delete_user_history, delete_specific_query
 
 router = APIRouter()
+
+# Optional authentication helper
+async def get_optional_current_user(request: Request) -> Optional[User]:
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email:
+            return get_user_by_email(email)
+    except JWTError:
+        return None
+    return None
 
 class QueryRequest(BaseModel):
     query: str
     url: str
-    timestamp: datetime
+    page_content: Optional[str] = None
+    selected_text: Optional[str] = None
+    timestamp: Optional[datetime] = None
+
+class StreamQueryRequest(BaseModel):
+    query: str
+    url: str
+    page_content: Optional[str] = None
+    selected_text: Optional[str] = None
+    model: Optional[str] = None
 
 class QueryResponse(BaseModel):
     success: bool
@@ -26,43 +55,35 @@ class QueryHistoryResponse(BaseModel):
     history: list
 
 class DeleteHistoryRequest(BaseModel):
-    history_type: Optional[str] = "query"  # "query", "browsing", or "all"
-
-class DeleteQueryRequest(BaseModel):
-    query_id: str
+    history_type: Optional[str] = "query"
 
 @router.post("/ask", response_model=QueryResponse)
 async def ask_query(
     request_body: QueryRequest,
-    request: Request,
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
-    
-    if current_user:
-        print(f"Authenticated user ID: {current_user.id}")
-    else:
-        print(f"User not authenticated or current_user is None.")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    user_id = current_user.id if current_user else "guest_user"
 
     try:
         result = answer_query(
-            user_id=current_user.id,
+            user_id=user_id,
             query=request_body.query,
-            url=request_body.url
-        )
-        
-        print(f"[{current_user.id}] Calling save_query_history with query='{request_body.query}', answer='{result.get('answer')}', url='{request_body.url}'")
-        save_query_history(
-            user_id=current_user.id,
-            query=request_body.query,
-            answer=result.get("answer"), # Ensure this is correctly passed
             url=request_body.url,
-            timestamp=request_body.timestamp
+            page_content=request_body.page_content,
+            selected_text=request_body.selected_text
         )
+
+        # Save history if possible
+        try:
+            save_query_history(
+                user_id=user_id,
+                query=request_body.query,
+                answer=result.get("answer"),
+                url=request_body.url,
+                timestamp=request_body.timestamp or datetime.now(timezone.utc)
+            )
+        except Exception as e:
+            print(f"[WARN] History save notice: {e}")
 
         return {
             "success": True,
@@ -71,23 +92,49 @@ async def ask_query(
             "confidence": result.get("confidence")
         }
     except Exception as e:
-        print(f"!!! Exception in /ask endpoint for user {current_user.id if current_user else 'Unknown'} !!!")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing query: {str(e)}"
         )
 
+@router.post("/stream")
+async def stream_query(
+    request_body: StreamQueryRequest,
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """
+    Real-time Server-Sent Events (SSE) streaming endpoint:
+    Returns text/event-stream chunks as the AI generates words.
+    """
+    user_id = current_user.id if current_user else "guest_user"
+
+    generator = stream_query_tokens(
+        user_id=user_id,
+        query=request_body.query,
+        url=request_body.url,
+        page_content=request_body.page_content,
+        selected_text=request_body.selected_text,
+        model=request_body.model
+    )
+
+    return StreamingResponse(
+        generator,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
 @router.get("/history", response_model=QueryHistoryResponse)
 async def read_query_history(
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
+    user_id = current_user.id if current_user else "guest_user"
     try:
-        # Get query history for user
-        history_data = get_query_history(current_user.id)
-        
-        return {
-            "history": history_data
-        }
+        history_data = get_query_history(user_id)
+        return {"history": history_data}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -97,60 +144,17 @@ async def read_query_history(
 @router.delete("/history", status_code=status.HTTP_200_OK)
 async def clear_user_history(
     request_body: DeleteHistoryRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
-    """
-    Clear user's query history
-    """
+    user_id = current_user.id if current_user else "guest_user"
     try:
-        success = delete_user_history(current_user.id, request_body.history_type)
-        
-        if success:
-            return {
-                "success": True,
-                "message": f"{request_body.history_type.title()} history cleared successfully"
-            }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to clear history"
-            )
+        success = delete_user_history(user_id, request_body.history_type)
+        return {
+            "success": True,
+            "message": f"{request_body.history_type.title()} history cleared successfully"
+        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error clearing history: {str(e)}"
-        )
-
-@router.delete("/history/query/{query_id}", status_code=status.HTTP_200_OK)
-async def delete_specific_query_endpoint(
-    query_id: str,
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Delete a specific query from user's history
-    """
-    print(f"DELETE request for query_id: {query_id}, user_id: {current_user.id}")
-    
-    try:
-        success = delete_specific_query(current_user.id, query_id)
-        
-        if success:
-            print(f"Successfully deleted query {query_id} for user {current_user.id}")
-            return {
-                "success": True,
-                "message": "Query deleted successfully"
-            }
-        else:
-            print(f"Failed to delete query {query_id} for user {current_user.id}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Query not found or already deleted"
-            )
-    except Exception as e:
-        print(f"Exception while deleting query {query_id}: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error deleting query: {str(e)}"
         )

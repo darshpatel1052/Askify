@@ -1,20 +1,30 @@
-# Ignore ChromaDB data files but keep directory structure
+# Python virtual environments & bytecode
+venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+backend/.pytest_cache/
+
+# Databases and Local Storage
+chromadb/
+local_db/
+tests_local_db/
+tests_chromadb/
+backend/tests_local_db/
+backend/tests_chromadb/
 backend/chromadb/*
 !backend/chromadb/.gitkeep
+backend/local_db/*
+!backend/local_db/.gitkeep
 
-# Environment files with secrets
+# Environment files & Secrets
+.env
 backend/.env
+*.env.local
 
-# Ignore Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-
-
-# IDE files
+# IDE & Editor files
 .vscode/
 .idea/
 *.swp
@@ -24,11 +34,9 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs & Temporary files
 *.log
 logs/
-
-# Temporary files
 *.tmp
 *.temp
-
+*.zip
