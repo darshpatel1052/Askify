@@ -1,4 +1,4 @@
-// Askify 2.0 Full-Featured Extension Popup Controller
+// Askify Next-Gen Side Panel Controller
 document.addEventListener('DOMContentLoaded', async () => {
     // --- State Variables ---
     let activeTab = null;
@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let selectedFocusText = '';
     let isStreaming = false;
     let currentAbortController = null;
-    let chatHistory = [];
+    let chatHistory = []; // { role: 'user' | 'assistant', content: string, sources?: any[] }
     let preferences = {
         theme: 'dark',
         engineMode: CONFIG.DEFAULT_ENGINE_MODE || 'backend',
@@ -52,8 +52,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPreferences();
     setupEventListeners();
     await loadActiveTabContent();
+    checkPendingAction();
 
-    // --- 2. Load Preferences ---
+    // --- 2. Load & Sync Preferences ---
     async function loadPreferences() {
         return new Promise((resolve) => {
             chrome.storage.local.get([
@@ -73,6 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     restoreChatHistory();
                 }
 
+                // Apply UI preferences
                 applyTheme(preferences.theme);
                 modelSelect.value = preferences.model;
                 engineModeSelect.value = preferences.engineMode;
@@ -81,6 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 geminiKeyInput.value = preferences.geminiKey;
                 anthropicKeyInput.value = preferences.anthropicKey;
                 ollamaUrlInput.value = preferences.ollamaUrl;
+
                 resolve();
             });
         });
@@ -97,25 +100,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- 3. Active Tab Content Extraction ---
     async function loadActiveTabContent() {
-        statusDot.className = 'status-dot';
+        statusDot.className = 'sp-status-dot';
         activeTabTitle.textContent = 'Inspecting webpage...';
         wordCountChip.textContent = '...';
 
         try {
             const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tabs || tabs.length === 0) {
-                setTabStatusRestricted('No active tab');
+                setTabStatusRestricted('No active tab found');
                 return;
             }
             activeTab = tabs[0];
 
+            // Check if restricted URL (chrome://, edge://, webstore)
             if (isRestrictedUrl(activeTab.url)) {
                 setTabStatusRestricted('Internal browser page');
                 return;
             }
 
+            // Request extraction from content script
             chrome.tabs.sendMessage(activeTab.id, { action: 'extractContent' }, (response) => {
                 if (chrome.runtime.lastError || !response || !response.success) {
+                    // Content script might need manual injection if loaded before extension
                     injectAndExtractContent(activeTab.id);
                     return;
                 }
@@ -123,6 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
         } catch (err) {
+            console.error('[Askify] Tab inspection error:', err);
             setTabStatusRestricted('Unable to read tab');
         }
     }
@@ -137,7 +144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function setTabStatusRestricted(reason) {
-        statusDot.className = 'status-dot';
+        statusDot.className = 'sp-status-dot restricted';
         activeTabTitle.textContent = reason;
         wordCountChip.textContent = 'General Mode';
         pageData = null;
@@ -164,11 +171,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function handleExtractedContent(data) {
         pageData = data;
-        statusDot.className = 'status-dot online';
-        activeTabTitle.textContent = data.metadata.title || activeTab.title || 'Active Webpage';
+        statusDot.className = 'sp-status-dot online';
+        activeTabTitle.textContent = data.metadata.title || activeTab.title || 'Active Page';
         activeTabTitle.title = data.metadata.url || activeTab.url;
         wordCountChip.textContent = `${data.wordCount.toLocaleString()} words`;
 
+        // Check if user has selected text
         if (data.selectedText && data.selectedText.length > 5) {
             setFocusSelection(data.selectedText);
         }
@@ -186,11 +194,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         focusIndicator.style.display = 'none';
     }
 
-    // --- 4. Event Listeners ---
+    // --- 4. Pending Actions Handler (Context Menus & Floating Widget) ---
+    function checkPendingAction() {
+        chrome.storage.local.get(['pendingAction'], (res) => {
+            if (res.pendingAction && Date.now() - res.pendingAction.timestamp < 10000) {
+                const action = res.pendingAction;
+                chrome.storage.local.remove(['pendingAction']);
+
+                if (action.text) {
+                    setFocusSelection(action.text);
+                }
+
+                if (action.type === 'explain') {
+                    handleUserQuery(`Please explain the following selected text clearly and concisely:\n\n"${action.text}"`);
+                } else if (action.type === 'summarize') {
+                    handleUserQuery(`Please provide a concise summary with key takeaways of this section:\n\n"${action.text}"`);
+                }
+            }
+        });
+    }
+
+    // --- 5. Event Listeners ---
     function setupEventListeners() {
+        // Textarea auto-resize & Enter to send
         queryTextarea.addEventListener('input', () => {
             queryTextarea.style.height = 'auto';
-            queryTextarea.style.height = Math.min(queryTextarea.scrollHeight, 90) + 'px';
+            queryTextarea.style.height = Math.min(queryTextarea.scrollHeight, 120) + 'px';
         });
 
         queryTextarea.addEventListener('keydown', (e) => {
@@ -202,25 +231,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         sendBtn.addEventListener('click', submitQuery);
 
-        quickActionsBar.querySelectorAll('.pop-chip-btn').forEach(btn => {
+        // Quick Action Chips
+        quickActionsBar.querySelectorAll('.sp-action-chip').forEach(btn => {
             btn.addEventListener('click', () => {
                 const prompt = btn.getAttribute('data-prompt');
                 if (prompt) handleUserQuery(prompt);
             });
         });
 
-        document.querySelectorAll('.pop-suggested-card').forEach(card => {
+        // Suggested Cards in Welcome State
+        document.querySelectorAll('.sp-suggested-card').forEach(card => {
             card.addEventListener('click', () => {
                 const prompt = card.getAttribute('data-prompt');
                 if (prompt) handleUserQuery(prompt);
             });
         });
 
+        // Model Selector
         modelSelect.addEventListener('change', () => {
             preferences.model = modelSelect.value;
             chrome.storage.local.set({ model: preferences.model });
         });
 
+        // Theme Toggle
         themeToggleBtn.addEventListener('click', () => {
             const current = document.body.getAttribute('data-theme') || 'dark';
             const next = current === 'dark' ? 'light' : 'dark';
@@ -229,17 +262,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             chrome.storage.local.set({ theme: next });
         });
 
+        // Refresh Page Extraction
         refreshPageBtn.addEventListener('click', loadActiveTabContent);
+
+        // Clear Selection Focus
         clearFocusBtn.addEventListener('click', clearFocusSelection);
 
+        // Clear Chat
         clearChatBtn.addEventListener('click', () => {
-            chatHistory = [];
-            chrome.storage.local.remove(['chatHistory']);
-            restoreChatHistory();
+            if (confirm('Clear current conversation history?')) {
+                chatHistory = [];
+                chrome.storage.local.remove(['chatHistory']);
+                renderChatFeed();
+            }
         });
 
+        // Export Chat to Markdown
         exportChatBtn.addEventListener('click', exportChatToMarkdown);
 
+        // Settings Modal
         settingsOpenBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
         settingsCloseBtn.addEventListener('click', () => settingsModal.style.display = 'none');
         settingsModal.addEventListener('click', (e) => {
@@ -276,14 +317,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         handleUserQuery(query);
     }
 
-    // --- 5. Query Handling & Streaming ---
+    // --- 6. Query Processing & Streaming ---
     async function handleUserQuery(userPrompt) {
         if (welcomeState) welcomeState.style.display = 'none';
 
+        // Add user message
         const userMsg = { role: 'user', content: userPrompt };
         chatHistory.push(userMsg);
         appendMessageUI('user', userPrompt);
 
+        // Add assistant placeholder with streaming cursor
         const assistantIndex = chatHistory.length;
         const assistantMsg = { role: 'assistant', content: '' };
         chatHistory.push(assistantMsg);
@@ -294,6 +337,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentAbortController = new AbortController();
 
         try {
+            // Determine context
             let contextText = '';
             if (selectedFocusText) {
                 contextText = `[User Selected Text Context]:\n${selectedFocusText}`;
@@ -301,6 +345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 contextText = `Page Title: ${pageData.metadata.title}\nPage URL: ${pageData.metadata.url}\n\nPage Content:\n${pageData.content.slice(0, 30000)}`;
             }
 
+            // Stream response based on selected engine mode
             if (preferences.engineMode === 'backend') {
                 try {
                     await streamFromBackend(userPrompt, contextText, bubbleEl, assistantIndex);
@@ -329,14 +374,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
         } catch (err) {
-            bubbleEl.innerHTML = `<span style="color: var(--error);">Notice: ${escapeHTML(err.message)}</span>`;
-            chatHistory[assistantIndex].content = `Notice: ${err.message}`;
+            console.error('[Askify] Stream error:', err);
+            bubbleEl.innerHTML = `<span style="color: var(--error);">Error generating answer: ${escapeHTML(err.message)}</span>`;
+            chatHistory[assistantIndex].content = `Error: ${err.message}`;
         } finally {
             isStreaming = false;
             sendBtn.disabled = false;
             currentAbortController = null;
+            // Save history
             chrome.storage.local.set({ chatHistory: chatHistory });
-            const cursor = bubbleEl.querySelector('.pop-cursor');
+            // Remove cursor
+            const cursor = bubbleEl.querySelector('.sp-cursor');
             if (cursor) cursor.remove();
         }
     }
@@ -371,7 +419,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `### ⚡ Page Summary (Client-Side Extraction)\n\n${bullets.join('\n\n')}${topics}\n\n---\n> 💡 *Extracted directly from live webpage DOM. To enable deep AI reasoning, click **Settings (⚙️)** to add an API key or start your backend (\`python run.py\`)*.`;
     }
 
-    // Backend FastAPI Stream
+    // --- 7. Streaming Engine: Backend FastAPI (Hybrid RAG) ---
     async function streamFromBackend(query, context, bubbleEl, msgIndex) {
         const url = activeTab?.url || 'https://example.com';
         let accumulatedText = '';
@@ -390,7 +438,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         if (!response.ok) {
-            throw new Error(`Backend response ${response.status}. If backend is not running, switch to 'Standalone BYOK' in Settings (⚙️).`);
+            // If backend is not running, fallback guidance
+            if (response.status === 404 || response.status === 502 || response.status === 500) {
+                throw new Error(`Backend service error (${response.status}). If backend server is not running, switch to 'Standalone BYOK' mode in Settings.`);
+            }
+            throw new Error(`Server returned HTTP ${response.status}`);
         }
 
         const reader = response.body.getReader();
@@ -403,7 +455,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop();
+            buffer = lines.pop(); // keep remainder
 
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
@@ -413,12 +465,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const parsed = JSON.parse(dataStr);
                         if (parsed.token) {
                             accumulatedText += parsed.token;
-                            bubbleEl.innerHTML = renderMarkdown(accumulatedText) + '<span class="pop-cursor"></span>';
+                            bubbleEl.innerHTML = renderMarkdown(accumulatedText) + '<span class="sp-cursor"></span>';
                             scrollChatToBottom();
                         }
                     } catch (e) {
+                        // Plain token string fallback
                         accumulatedText += dataStr;
-                        bubbleEl.innerHTML = renderMarkdown(accumulatedText) + '<span class="pop-cursor"></span>';
+                        bubbleEl.innerHTML = renderMarkdown(accumulatedText) + '<span class="sp-cursor"></span>';
                         scrollChatToBottom();
                     }
                 }
@@ -430,21 +483,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         attachCodeCopyButtons(bubbleEl);
     }
 
-    // Client-Side BYOK Stream (OpenAI / Gemini / Claude / Ollama)
+    // --- 8. Streaming Engine: Client-Side BYOK (OpenAI / Gemini / Claude / Ollama) ---
     async function streamFromClientBYOK(query, context, bubbleEl, msgIndex) {
         const model = preferences.model;
         let accumulatedText = '';
 
+        // Check provider
         if (model.startsWith('gemini') && preferences.geminiKey) {
+            // Google Gemini API Stream
             accumulatedText = await streamGemini(query, context, preferences.geminiKey, model, bubbleEl);
         } else if (model.startsWith('claude') && preferences.anthropicKey) {
+            // Anthropic Claude
             accumulatedText = await streamClaude(query, context, preferences.anthropicKey, model, bubbleEl);
         } else if (model.startsWith('llama') || model.startsWith('ollama')) {
+            // Local Ollama
             accumulatedText = await streamOllama(query, context, preferences.ollamaUrl, model, bubbleEl);
         } else if (preferences.openaiKey) {
+            // OpenAI GPT
             accumulatedText = await streamOpenAI(query, context, preferences.openaiKey, model, bubbleEl);
         } else {
-            const msg = `**API Key Needed for BYOK Mode**\n\nPlease open **Settings** (⚙️ top right) and enter your OpenAI, Gemini, or Anthropic API key, or switch to **FastAPI Backend** mode if your server is running.`;
+            // No key provided
+            const msg = `**API Key Required for BYOK Mode**\n\nPlease open **Settings** (⚙️ top right) and enter your OpenAI, Gemini, or Anthropic API key, or switch to **FastAPI Backend** mode if your server is running.`;
             bubbleEl.innerHTML = renderMarkdown(msg);
             chatHistory[msgIndex].content = msg;
             return;
@@ -455,11 +514,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         attachCodeCopyButtons(bubbleEl);
     }
 
+    // OpenAI Streaming Implementation
     async function streamOpenAI(query, context, apiKey, model, bubbleEl) {
         let text = '';
-        const systemPrompt = `You are Askify, a smart in-browser AI copilot.
-Answer concisely based on the provided webpage content or selection.
-Use clean Markdown with bold key points, bullet lists, and code blocks.
+        const systemPrompt = `You are Askify, a smart, context-aware web copilot.
+Answer the user's questions based on the provided webpage content or selection.
+Be concise, well-structured, and use Markdown (bullet points, bold key terms, tables, and code blocks).
 
 Context:
 ${context || 'No specific page context available.'}`;
@@ -474,11 +534,11 @@ ${context || 'No specific page context available.'}`;
                 model: model || 'gpt-4o-mini',
                 messages: [
                     { role: 'system', content: systemPrompt },
-                    ...chatHistory.slice(-4, -2),
+                    ...chatHistory.slice(-4, -2), // Previous turn for memory
                     { role: 'user', content: query }
                 ],
                 stream: true,
-                temperature: 0.25
+                temperature: 0.3
             }),
             signal: currentAbortController.signal
         });
@@ -507,7 +567,7 @@ ${context || 'No specific page context available.'}`;
                         const json = JSON.parse(trimmed.slice(6));
                         const delta = json.choices[0]?.delta?.content || '';
                         text += delta;
-                        bubbleEl.innerHTML = renderMarkdown(text) + '<span class="pop-cursor"></span>';
+                        bubbleEl.innerHTML = renderMarkdown(text) + '<span class="sp-cursor"></span>';
                         scrollChatToBottom();
                     } catch (e) {}
                 }
@@ -516,6 +576,7 @@ ${context || 'No specific page context available.'}`;
         return text;
     }
 
+    // Local Ollama Streaming Implementation
     async function streamOllama(query, context, ollamaUrl, model, bubbleEl) {
         let text = '';
         const prompt = `Webpage Context:\n${context}\n\nQuestion: ${query}`;
@@ -531,7 +592,9 @@ ${context || 'No specific page context available.'}`;
             signal: currentAbortController.signal
         });
 
-        if (!response.ok) throw new Error(`Could not reach Ollama at ${ollamaUrl}.`);
+        if (!response.ok) {
+            throw new Error(`Could not connect to Ollama at ${ollamaUrl}. Make sure Ollama is running.`);
+        }
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -547,7 +610,7 @@ ${context || 'No specific page context available.'}`;
                     const json = JSON.parse(line);
                     if (json.response) {
                         text += json.response;
-                        bubbleEl.innerHTML = renderMarkdown(text) + '<span class="pop-cursor"></span>';
+                        bubbleEl.innerHTML = renderMarkdown(text) + '<span class="sp-cursor"></span>';
                         scrollChatToBottom();
                     }
                 } catch (e) {}
@@ -556,20 +619,26 @@ ${context || 'No specific page context available.'}`;
         return text;
     }
 
+    // Google Gemini Streaming Implementation
     async function streamGemini(query, context, apiKey, model, bubbleEl) {
         let text = '';
-        const fullPrompt = `You are Askify, a smart web assistant.\n\nContext:\n${context}\n\nQuestion:\n${query}`;
+        const fullPrompt = `You are Askify, a smart web assistant.\n\nContext:\n${context}\n\nUser Question:\n${query}`;
         const targetModel = model.includes('pro') ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
+
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:streamGenerateContent?key=${apiKey}`;
 
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] }),
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: fullPrompt }] }]
+            }),
             signal: currentAbortController.signal
         });
 
-        if (!response.ok) throw new Error(`Gemini Error (${response.status})`);
+        if (!response.ok) {
+            throw new Error(`Gemini API error (${response.status})`);
+        }
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -580,7 +649,9 @@ ${context || 'No specific page context available.'}`;
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
+            // Gemini streams JSON array chunks
             try {
+                // Look for candidate text in chunks
                 const matches = buffer.match(/"text":\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g);
                 if (matches) {
                     let chunkText = '';
@@ -589,7 +660,7 @@ ${context || 'No specific page context available.'}`;
                         chunkText += JSON.parse(`"${sub}"`);
                     });
                     text = chunkText;
-                    bubbleEl.innerHTML = renderMarkdown(text) + '<span class="pop-cursor"></span>';
+                    bubbleEl.innerHTML = renderMarkdown(text) + '<span class="sp-cursor"></span>';
                     scrollChatToBottom();
                 }
             } catch (e) {}
@@ -597,37 +668,49 @@ ${context || 'No specific page context available.'}`;
         return text;
     }
 
-    // --- 6. Markdown Renderer ---
+    // --- 9. Markdown Parser & UI Helpers ---
     function renderMarkdown(md) {
         if (!md) return '';
+
         let html = md
+            // Escape HTML tags to prevent XSS
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
+            // Code Blocks ```lang ... ```
             .replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
                 const cleanLang = lang || 'code';
-                return `<div class="pop-code-block">
-                    <div class="pop-code-header">
+                return `<div class="sp-code-block">
+                    <div class="sp-code-header">
                         <span>${cleanLang}</span>
-                        <button class="pop-code-copy-btn">Copy</button>
+                        <button class="sp-code-copy-btn">Copy</button>
                     </div>
                     <pre><code>${code.trim()}</code></pre>
                 </div>`;
             })
+            // Inline Code
             .replace(/`([^`]+)`/g, '<code>$1</code>')
+            // Headings
             .replace(/^### (.*$)/gim, '<h3>$1</h3>')
             .replace(/^## (.*$)/gim, '<h2>$1</h2>')
             .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            // Bold and Italic
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            // Blockquotes
             .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+            // Bullet Lists
             .replace(/^\s*[\-\*]\s+(.*$)/gim, '<li>$1</li>')
+            // Numbered Lists
             .replace(/^\s*\d+\.\s+(.*$)/gim, '<li>$1</li>')
+            // Tables (simple line parse)
             .replace(/\|(.+)\|/g, (match) => {
                 const cells = match.split('|').filter(c => c.trim().length > 0);
-                if (cells.some(c => c.includes('---'))) return '';
+                if (cells.some(c => c.includes('---'))) return ''; // skip divider row
+                const isHeader = !match.includes('---');
                 return `<tr>${cells.map(c => `<td>${c.trim()}</td>`).join('')}</tr>`;
             })
+            // Paragraph breaks
             .replace(/\n\n+/g, '</p><p>')
             .replace(/\n/g, '<br>');
 
@@ -635,9 +718,9 @@ ${context || 'No specific page context available.'}`;
     }
 
     function attachCodeCopyButtons(container) {
-        container.querySelectorAll('.pop-code-copy-btn').forEach(btn => {
+        container.querySelectorAll('.sp-code-copy-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const code = btn.closest('.pop-code-block').querySelector('code').innerText;
+                const code = btn.closest('.sp-code-block').querySelector('code').innerText;
                 navigator.clipboard.writeText(code).then(() => {
                     btn.textContent = 'Copied!';
                     setTimeout(() => btn.textContent = 'Copy', 1500);
@@ -648,45 +731,41 @@ ${context || 'No specific page context available.'}`;
 
     function appendMessageUI(role, text, withCursor = false) {
         const msgDiv = document.createElement('div');
-        msgDiv.className = `pop-msg ${role}`;
+        msgDiv.className = `sp-msg ${role}`;
 
         if (role === 'assistant') {
             msgDiv.innerHTML = `
-                <div class="pop-msg-header">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div class="sp-msg-header">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                     </svg>
                     <span>Askify</span>
                 </div>
-                <div class="pop-msg-bubble">${renderMarkdown(text)}${withCursor ? '<span class="pop-cursor"></span>' : ''}</div>
+                <div class="sp-msg-bubble">${renderMarkdown(text)}${withCursor ? '<span class="sp-cursor"></span>' : ''}</div>
             `;
             chatFeed.appendChild(msgDiv);
             scrollChatToBottom();
-            return msgDiv.querySelector('.pop-msg-bubble');
+            return msgDiv.querySelector('.sp-msg-bubble');
         } else {
             msgDiv.innerHTML = `
-                <div class="pop-msg-bubble">${escapeHTML(text)}</div>
+                <div class="sp-msg-bubble">${escapeHTML(text)}</div>
             `;
             chatFeed.appendChild(msgDiv);
             scrollChatToBottom();
-            return msgDiv.querySelector('.pop-msg-bubble');
+            return msgDiv.querySelector('.sp-msg-bubble');
         }
     }
 
     function restoreChatHistory() {
         if (chatHistory.length > 0 && welcomeState) {
             welcomeState.style.display = 'none';
-        } else if (chatHistory.length === 0 && welcomeState) {
-            welcomeState.style.display = 'flex';
         }
         chatFeed.innerHTML = '';
-        if (chatHistory.length === 0 && welcomeState) {
-            chatFeed.appendChild(welcomeState);
-            return;
-        }
         chatHistory.forEach(msg => {
             const bubble = appendMessageUI(msg.role, msg.content);
-            if (msg.role === 'assistant') attachCodeCopyButtons(bubble);
+            if (msg.role === 'assistant') {
+                attachCodeCopyButtons(bubble);
+            }
         });
     }
 
@@ -700,15 +779,23 @@ ${context || 'No specific page context available.'}`;
         return div.innerHTML;
     }
 
+    // --- 10. Export to Markdown ---
     function exportChatToMarkdown() {
         if (chatHistory.length === 0) {
             alert('No conversation to export.');
             return;
         }
-        let md = `# Askify Notes: ${activeTab?.title || 'Webpage'}\n*URL:* ${activeTab?.url || 'N/A'}\n\n---\n\n`;
+
+        let md = `# Askify Analysis: ${activeTab?.title || 'Webpage Notes'}\n`;
+        md += `*URL:* ${activeTab?.url || 'N/A'}\n`;
+        md += `*Date:* ${new Date().toLocaleString()}\n\n---\n\n`;
+
         chatHistory.forEach(item => {
-            md += `${item.role === 'user' ? '### 👤 User' : '### 🤖 Askify'}\n\n${item.content}\n\n`;
+            const speaker = item.role === 'user' ? '### 👤 User' : '### 🤖 Askify Copilot';
+            md += `${speaker}\n\n${item.content}\n\n`;
         });
+
+        // Trigger download
         const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');

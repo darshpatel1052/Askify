@@ -6,7 +6,7 @@ from datetime import datetime
 
 from app.api.endpoints.auth import get_current_user
 from app.models.user import User
-from app.db.history_store import save_browsing_history, get_user_history
+from app.db.storage_factory import save_browsing_history, get_user_history
 
 router = APIRouter()
 

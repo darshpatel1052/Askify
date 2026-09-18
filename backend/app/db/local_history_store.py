@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 
 # Local storage file paths
-LOCAL_DB_DIR = "./local_db"
+LOCAL_DB_DIR = os.getenv("LOCAL_DB_DIR", "./local_db")
 QUERY_HISTORY_FILE = os.path.join(LOCAL_DB_DIR, "query_history.json")
 BROWSING_HISTORY_FILE = os.path.join(LOCAL_DB_DIR, "browsing_history.json")
 
@@ -48,36 +48,34 @@ def save_query_history(
         "query": query,
         "answer": answer,
         "url": url,
-        "timestamp": timestamp.isoformat(),
+        "timestamp": timestamp.isoformat() if hasattr(timestamp, 'isoformat') else str(timestamp),
         "metadata": metadata or {}
     }
     
-    # Load existing data
     history = load_json_file(QUERY_HISTORY_FILE)
-    
-    # Add new entry
     history.append(query_data)
-    
-    # Save back to file
     save_json_file(QUERY_HISTORY_FILE, history)
-    
-    print(f"[LOCAL] Saved query history: {query_id} for user {user_id}")
     return query_id
 
 def get_query_history(user_id: str, limit: int = 10, offset: int = 0) -> List[Dict]:
     """Get a user's query history"""
     history = load_json_file(QUERY_HISTORY_FILE)
-    
-    # Filter by user_id and sort by timestamp (newest first)
     user_history = [item for item in history if item.get("user_id") == user_id]
     user_history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-    
-    # Apply pagination
-    start = offset
-    end = offset + limit
-    
-    print(f"[LOCAL] Retrieved {len(user_history[start:end])} query history items for user {user_id}")
-    return user_history[start:end]
+    return user_history[offset:offset+limit]
+
+def get_user_history(user_id: str, limit: int = 100, offset: int = 0) -> Dict:
+    """Get both browsing and query history for a user"""
+    browsing = load_json_file(BROWSING_HISTORY_FILE)
+    query = load_json_file(QUERY_HISTORY_FILE)
+    user_browsing = [b for b in browsing if b.get("user_id") == user_id]
+    user_query = [q for q in query if q.get("user_id") == user_id]
+    user_browsing.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    user_query.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    return {
+        "browsing_history": user_browsing[offset:offset+limit],
+        "query_history": user_query[offset:offset+limit]
+    }
 
 def delete_user_history(user_id: str, history_type: str = "all") -> bool:
     """Delete a user's history"""
@@ -86,14 +84,11 @@ def delete_user_history(user_id: str, history_type: str = "all") -> bool:
             history = load_json_file(QUERY_HISTORY_FILE)
             filtered_history = [item for item in history if item.get("user_id") != user_id]
             save_json_file(QUERY_HISTORY_FILE, filtered_history)
-            print(f"[LOCAL] Deleted all query history for user {user_id}")
         
         if history_type in ["browsing", "all"]:
             history = load_json_file(BROWSING_HISTORY_FILE)
             filtered_history = [item for item in history if item.get("user_id") != user_id]
             save_json_file(BROWSING_HISTORY_FILE, filtered_history)
-            print(f"[LOCAL] Deleted all browsing history for user {user_id}")
-        
         return True
     except Exception as e:
         print(f"[LOCAL] Error deleting user history: {str(e)}")
@@ -103,27 +98,15 @@ def delete_specific_query(user_id: str, query_id: str) -> bool:
     """Delete a specific query from user's history"""
     try:
         history = load_json_file(QUERY_HISTORY_FILE)
-        
-        # Find the query to delete
-        original_count = len(history)
         filtered_history = [
             item for item in history 
             if not (item.get("user_id") == user_id and item.get("id") == query_id)
         ]
-        
-        if len(filtered_history) == original_count:
-            print(f"[LOCAL] Query {query_id} not found for user {user_id}")
+        if len(filtered_history) == len(history):
             return False
-        
-        # Save the filtered history
         save_json_file(QUERY_HISTORY_FILE, filtered_history)
-        print(f"[LOCAL] Successfully deleted query {query_id} for user {user_id}")
         return True
-        
     except Exception as e:
-        print(f"[LOCAL] Error deleting specific query: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return False
 
 def save_browsing_history(
@@ -135,24 +118,15 @@ def save_browsing_history(
 ) -> str:
     """Save a browsing history entry"""
     history_id = str(uuid.uuid4())
-    
     history_data = {
         "id": history_id,
         "user_id": user_id,
         "url": url,
         "title": title,
-        "timestamp": timestamp.isoformat(),
+        "timestamp": timestamp.isoformat() if hasattr(timestamp, 'isoformat') else str(timestamp),
         "metadata": metadata or {}
     }
-    
-    # Load existing data
     history = load_json_file(BROWSING_HISTORY_FILE)
-    
-    # Add new entry
     history.append(history_data)
-    
-    # Save back to file
     save_json_file(BROWSING_HISTORY_FILE, history)
-    
-    print(f"[LOCAL] Saved browsing history: {history_id} for user {user_id}")
     return history_id

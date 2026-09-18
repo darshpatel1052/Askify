@@ -1,13 +1,19 @@
 # History storage using Supabase
 import uuid
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from datetime import datetime
-from supabase import create_client
 
 from app.core.config import SUPABASE_URL, SUPABASE_KEY
 
-# Initialize Supabase client
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Initialize Supabase client safely
+supabase = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        from supabase import create_client
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print(f"[WARN] Failed to initialize Supabase client in history_store: {e}")
+        supabase = None
 
 def save_browsing_history(
     user_id: str,

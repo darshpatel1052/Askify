@@ -1,39 +1,47 @@
-// Configuration file for Askify Chrome Extension
-// Change these settings before building the extension
-
+// Configuration for Askify Chrome Extension (v2.0 Next-Gen)
 const CONFIG = {
-    // API Base URL
-    // In development: http://localhost:8000/api/v1
-    // In production: Your deployed API URL
+    // API Endpoints
     API_BASE_URL: 'http://localhost:8000/api/v1',
+    STREAM_ENDPOINT: 'http://localhost:8000/api/v1/query/stream',
+    INGEST_ENDPOINT: 'http://localhost:8000/api/v1/content/ingest',
 
-    // Default settings
-    DEFAULT_THEME: 'system',      // Options: 'light', 'dark', 'system'
-    DEFAULT_FONT_SIZE: 'medium',  // Options: 'small', 'medium', 'large'
-    DEFAULT_MAX_HISTORY: 5,       // Number of history items to display
-    DEFAULT_OFFLINE_MODE: false,  // Whether to enable offline mode by default
+    // Engine Mode: 'backend' (FastAPI + ChromaDB RAG) or 'byok' (Direct Client-Side Keys)
+    DEFAULT_ENGINE_MODE: 'backend',
 
-    // Debug settings
-    DEBUG: true,                  // Enable/disable debug logging
+    // Model Defaults
+    DEFAULT_PROVIDER: 'openai', // 'openai', 'gemini', 'anthropic', 'ollama'
+    DEFAULT_MODEL: 'gpt-4o-mini',
+    
+    AVAILABLE_MODELS: [
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Fast & Smart)', provider: 'openai' },
+        { id: 'gpt-4o', name: 'GPT-4o (Deep Reasoning)', provider: 'openai' },
+        { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Ultra Fast)', provider: 'gemini' },
+        { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Large Context)', provider: 'gemini' },
+        { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet (Nuanced)', provider: 'anthropic' },
+        { id: 'llama3:8b', name: 'Ollama Llama 3 (100% Local/Private)', provider: 'ollama' }
+    ],
 
-    // Version info
-    VERSION: '1.0.0'
+    // Local Ollama default URL
+    OLLAMA_BASE_URL: 'http://localhost:11434',
+
+    // Preferences
+    DEFAULT_THEME: 'system',      // 'dark', 'light', 'system'
+    DEFAULT_FONT_SIZE: 'medium',
+    DEFAULT_STREAMING: true,
+    FLOATING_BUBBLE_ENABLED: true,
+    MAX_HISTORY: 20,
+
+    VERSION: '2.0.0'
 };
 
-// Make it compatible with both module imports and plain JavaScript
-// This way it can be used in both background.js and popup.js
 try {
     if (typeof module !== 'undefined' && module.exports) {
-        // CommonJS/Node.js
         module.exports = CONFIG;
     } else if (typeof exports !== 'undefined') {
-        // CommonJS
         exports.CONFIG = CONFIG;
     } else if (typeof window !== 'undefined') {
-        // Browser
         window.CONFIG = CONFIG;
     }
 } catch (e) {
-    // Ignore any errors, just make sure CONFIG is available globally
-    console.debug('Config module setup error (harmless):', e);
+    console.debug('Config load notice:', e);
 }
